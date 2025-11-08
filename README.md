@@ -174,6 +174,44 @@ Forms a multimodal dataset (text + visuals) for enhanced LLM training and ground
 
 ---
 
+## Directory layout
+
+``` bash
+video-pipeline/
+├─ config/
+│  ├─ channels.yml               # seed channels/playlists/video_ids
+│  ├─ constants.yml              # formats, thresholds, processing_version
+│  └─ .env.example               # YT API key, paths
+├─ pipelines/
+│  ├─ discover.py                # builds/updates manifest.csv from seeds
+│  ├─ ingest.py                  # downloads media + captions; extracts audio
+│  └─ utils_io.py                # idempotency, hashing, retries, logging
+├─ manifests/
+│  ├─ manifest.csv               # canonical list of videos to process
+│  └─ rejected.csv               # videos rejected at discover
+├─ data/
+│  ├─ raw/                       # immutable artifacts (as-downloaded)
+│  │  └─ yt/{video_id}/
+│  │     ├─ metadata.json
+│  │     ├─ captions.en.vtt      # zero or more caption files
+│  │     ├─ captions.auto.en.vtt
+│  │     └─ source.sha256
+│  └─ derived/                   # pipeline outputs (audio, aligned captions, OCR frames)
+│     └─ yt/{video_id}/
+│        ├─ audio.wav            # For ASR/alignment
+│        └─ captions.norm.en.vtt # normalized caption track (merged/fixed)
+├─ logs/
+│  ├─ discover.log
+│  └─ ingest.log
+├─ scripts/
+│  └─ make_audio.sh              # ffmpeg wrapper
+├─ .gitignore
+└─ README.md
+
+```
+
+---
+
 ## References
 - Nguyen, T. T. H., et al. (2025). *SimInterview: Transforming Business Education through LLM-Based Simulated Multilingual Interview Training System.* arXiv:2508.11873  
 - Maity, S., Deroy, A., & Sarkar, S. (2025). *Towards Smarter Hiring: Are Zero-Shot and Few-Shot Pre-trained LLMs Ready for HR Spoken Interview Transcript Analysis?* arXiv:2504.05683  
