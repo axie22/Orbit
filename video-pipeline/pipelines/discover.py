@@ -8,9 +8,26 @@ from dotenv import load_dotenv
 
 # set up
 load_dotenv()
-CONFIG_PATH = Path(os.getenv("CONFIG_PATH"))
-MANIFEST_PATH = Path(os.getenv("MANIFEST_PATH"))
-LOG_PATH = Path(os.getenv("LOG_PATH"))
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def to_abs_path(value: str, base: Path) -> Path:
+    """
+    Convert an env path (absolute or relative) to an absolute Path.
+    - Expands ~
+    - If relative, resolves relative to `base`
+    """
+    p = Path(os.path.expandvars(value)).expanduser()
+    return p if p.is_absolute() else (base / p).resolve()
+
+CONFIG_ENV   = os.getenv("CONFIG_PATH")
+MANIFEST_ENV = os.getenv("MANIFEST_PATH")
+LOG_ENV      = os.getenv("LOG_PATH")
+
+CONFIG_PATH   = to_abs_path(CONFIG_ENV, BASE_DIR)
+MANIFEST_PATH = to_abs_path(MANIFEST_ENV, BASE_DIR)
+LOG_PATH      = to_abs_path(LOG_ENV, BASE_DIR)
 
 logging.basicConfig(
     filename=LOG_PATH,
