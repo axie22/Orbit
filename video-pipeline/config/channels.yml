@@ -5,15 +5,16 @@ sources:
     exclude_keywords: ["sponsor", "announcement"]                 # optional
   - type: playlist
     name: Easy problems
-    id: PLQpVsaqBj4RIJdYW6Y-iAswxCZeocfoRW&si=jaPmRLoSFJ_Fs4FU
+    id: PLQpVsaqBj4RIJdYW6Y-iAswxCZeocfoRW
   - type: playlist
     name: Medium problems
-    id: PLQpVsaqBj4RLwXMZ9LaAFf4rVowiC3ZcG&si=8smrn0iGI8im1S4F
+    id: PLQpVsaqBj4RLwXMZ9LaAFf4rVowiC3ZcG
   - type: playlist
     name: Hard problems
-    id: PLQpVsaqBj4RI3jgIzqK7VJHy8Esacg-ow&si=a05nmLCjwXeNkN22
+    id: PLQpVsaqBj4RI3jgIzqK7VJHy8Esacg-ow
   # - type: video               # for specific videos 
   #   id: dQw4w9WgXcQ
+
 limits:
   min_duration_sec: 60
   max_duration_sec: 7200
