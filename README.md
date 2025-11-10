@@ -174,7 +174,7 @@ Forms a multimodal dataset (text + visuals) for enhanced LLM training and ground
 
 ---
 
-## Directory layout
+## Directory Layout
 
 ``` bash
 video-pipeline/
@@ -213,6 +213,7 @@ video-pipeline/
 ---
 
 ## References
+
 - Nguyen, T. T. H., et al. (2025). *SimInterview: Transforming Business Education through LLM-Based Simulated Multilingual Interview Training System.* arXiv:2508.11873  
 - Maity, S., Deroy, A., & Sarkar, S. (2025). *Towards Smarter Hiring: Are Zero-Shot and Few-Shot Pre-trained LLMs Ready for HR Spoken Interview Transcript Analysis?* arXiv:2504.05683  
 - Yazdani, N., Mahajan, A., & Ansari, A. (2025). *Zara: An LLM-Based Candidate Interview Feedback System.* arXiv:2507.02869
