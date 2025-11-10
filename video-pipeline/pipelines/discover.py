@@ -1,16 +1,16 @@
 import os
 import csv
-import yaml
 import logging
 from pathlib import Path
+import yaml
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
 # set up
-CONFIG_PATH = Path("video-pipeline/config/channels.yml")
-MANIFEST_PATH = Path("video-pipeline/manifests/manifest.csv")
-LOG_PATH = Path("video-pipeline/logs/discover.log")
 load_dotenv()
+CONFIG_PATH = Path(os.getenv("CONFIG_PATH"))
+MANIFEST_PATH = Path(os.getenv("MANIFEST_PATH"))
+LOG_PATH = Path(os.getenv("LOG_PATH"))
 
 logging.basicConfig(
     filename=LOG_PATH,
