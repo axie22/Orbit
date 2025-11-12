@@ -185,7 +185,16 @@ video-pipeline/
 ├─ pipelines/
 │  ├─ discover.py                # builds/updates manifest.csv from seeds
 │  ├─ ingest.py                  # downloads media + captions; extracts audio
-│  └─ utils_io.py                # idempotency, hashing, retries, logging
+│  ├─ plan_segments.py             # (Stage 2.1) transcript→candidate segments
+│  ├─ materialize_segments.py      # (Stage 2.2) yt-dlp clips + ffmpeg frames
+│  ├─ detect_code_frames.py        # (Stage 2.3) UI classifier + OCR + scoring
+│  └─ index_frames.py              # (Stage 2.4) link frames↔utterances, write DDB
+├─ services/                       # reusable, side-effecting helpers (S3, DDB, yt, ffmpeg…)
+│  ├─ s3io.py
+│  ├─ ddb.py
+│  ├─ yt.py                        # yt-dlp client selection, segment download
+│  ├─ media.py                     # ffmpeg extract_audio, extract_frames
+│  └─ captions.py                  # pick_best_caption, parse_vtt, whisperx wrappers
 ├─ manifests/
 │  ├─ manifest.csv               # canonical list of videos to process
 │  └─ rejected.csv               # videos rejected at discover
