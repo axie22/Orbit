@@ -1,4 +1,5 @@
-import csv, json, os, pathlib, subprocess, hashlib, time, sys
+import csv, json, os, pathlib, subprocess, hashlib, time, sys, argparse
+import shlex, subprocess, random
 import boto3
 from botocore.exceptions import ClientError
 
@@ -58,66 +59,131 @@ def pick_best_caption(raw_dir: pathlib.Path):
     return auto[0] if auto else None
 
 def find_downloaded_audio(vdir: pathlib.Path) -> pathlib.Path | None:
-    # yt-dlp may produce .m4a or .webm/.opus depending on the video
-    for ext in (".m4a", ".webm", ".mp3", ".opus", ".mkv"):
+    # yt-dlp may produce .mp4 (progressive), .m4a, .webm/.opus, etc.
+    for ext in (".mp4", ".m4a", ".webm", ".opus", ".mp3", ".mkv"):
         p = vdir / f"source{ext}"
         if p.exists():
             return p
-    # Fallback: first non-json file in dir
+    # Fallback: first non-json/non-vtt file
     for p in sorted(vdir.iterdir()):
         if p.suffix.lower() not in {".json", ".vtt"} and p.is_file():
             return p
     return None
+
+def _sh(cmd: str):
+    subprocess.check_call(cmd, shell=True)
+
+def _backoff(i: int):
+    time.sleep((2 ** i) * 0.5 + random.random() * 0.25)
+
+def download_audio_any(url: str, vdir: pathlib.Path, caption_langs: str):
+    """
+    Robust media+subs:
+      - MEDIA: Android client (no cookies), prefer progressive 18; fallback to best.
+      - SUBTITLES: Web client with cookies, best-effort (won't fail job).
+    """
+    vdir.mkdir(parents=True, exist_ok=True)
+
+    # --- MEDIA: android client, NO cookies ---
+    media_cmd = (
+        'yt-dlp '
+        '--extractor-args "youtube:player_client=android" '
+        '--force-ipv4 '
+        '--no-part --write-info-json --check-formats '
+        '--retries 10 --fragment-retries 10 --sleep-requests 1 --concurrent-fragments 1 '
+        '-f "18/best" '  # prefer progressive MP4 360p; fallback to anything playable
+        f'-o "{vdir}/source.%(ext)s" '
+        f'{shlex.quote(url)}'
+    )
+    # Try twice with small backoff
+    for i in range(2):
+        try:
+            _sh(media_cmd)
+            break
+        except subprocess.CalledProcessError as e:
+            if i == 1:
+                raise
+            _backoff(i)
+
+    # --- SUBTITLES: web client + cookies (best effort) ---
+    # Choose cookies: explicit cookies.txt beats browser extraction
+    if os.getenv("YTDLP_COOKIES_FILE"):
+        cookies_flag = f'--cookies "{os.environ["YTDLP_COOKIES_FILE"]}" '
+    else:
+        cookies_flag = f'--cookies-from-browser {os.getenv("YTDLP_COOKIES_FROM_BROWSER","chrome")} '
+
+    subs_cmd = (
+        'yt-dlp --skip-download '
+        f'{cookies_flag}'
+        '--extractor-args "youtube:player_client=web_creator" '
+        '--force-ipv4 '
+        f'--write-subs --write-auto-subs --sub-langs "{caption_langs}" '
+        f'-o "{vdir}/source.%(ext)s" '
+        f'{shlex.quote(url)}'
+    )
+    try:
+        _sh(subs_cmd)
+    except subprocess.CalledProcessError:
+        # No subs or gated: proceed without captions
+        pass
+
+
 
 def ingest_one(video_id: str, title: str):
     url  = f"https://www.youtube.com/watch?v={video_id}"
     vdir = WORK / video_id
     vdir.mkdir(parents=True, exist_ok=True)
 
-    # 1) Download AUDIO ONLY + captions + info JSON (no full video)
-    #    - Use bestaudio; store as source.<ext>
-    #    - We still ask yt-dlp to write subtitles/captions if available
-    run(
-        'yt-dlp '
-        f'-f "bestaudio[ext=m4a]/bestaudio" '
-        f'--write-subs --write-auto-subs --sub-langs "{CAPTION_LANGS}" '
-        '--write-info-json --no-part '
-        f'-o "{vdir}/source.%(ext)s" "{url}"'
-    )
+    # 1) MEDIA via Android (no cookies), captions via web+cookies (best-effort)
+    download_audio_any(url, vdir, CAPTION_LANGS)
 
+    # 2) Read info json (guard)
     info_json = vdir / "source.info.json"
-    meta = json.loads(info_json.read_text())
+    meta = json.loads(info_json.read_text()) if info_json.exists() else {}
 
-    # 2) Locate downloaded audio file
+    # 3) Locate downloaded media (progressive mp4, m4a, webm, etc.)
     audio_src = find_downloaded_audio(vdir)
     if not audio_src or not audio_src.exists():
-        raise RuntimeError(f"No audio file downloaded for {video_id}")
+        now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        ddb.put_item(Item={
+            "PK": f"video#{video_id}",
+            "SK": "meta#v0",
+            "video_id": video_id,
+            "title": title,
+            "url": url,
+            "status": "download_failed",
+            "ingested_at": now_iso,
+            "processing_version": PROCESSING_VERSION,
+            "error": "no_playable_media_after_android",
+        })
+        return
 
-    # 3) ffprobe on audio for metadata
+    # 4) ffprobe
     ffprobe_path = vdir / "ffprobe.json"
     run(f'ffprobe -v quiet -print_format json -show_format -show_streams "{audio_src}" > "{ffprobe_path}"')
 
-    # 4) Normalize captions -> captions.norm.en.vtt
+    # 5) Normalize captions -> captions.norm.en.vtt
     captions_best = pick_best_caption(vdir)
     captions_norm = None
     if captions_best:
         captions_norm = vdir / "captions.norm.en.vtt"
-        # Copy-through normalize for now
         captions_norm.write_text(captions_best.read_text())
+    has_captions = captions_norm is not None
 
-    # 5) Extract audio.wav
+    # 6) Extract audio.wav
     audio_wav = vdir / "audio.wav"
     run(f'ffmpeg -y -i "{audio_src}" -ac 1 -ar 16000 -vn -acodec pcm_s16le "{audio_wav}"')
 
-    # 6) Hashes use audio.wav as stable content hash
+    # 7) Hashes (build once, omit optional fields when absent)
     hashes = {
         "audio_wav_sha256": sha256_of(audio_wav),
-        "captions_norm_vtt_sha256": sha256_of(captions_norm) if captions_norm else None,
-        "content_sha": None
+        "content_sha": None,
     }
-    hashes["content_sha"] = hashes["audio_wav_sha256"]  # content hash anchor
+    hashes["content_sha"] = hashes["audio_wav_sha256"]
+    if has_captions:
+        hashes["captions_norm_vtt_sha256"] = sha256_of(captions_norm)
 
-    # 7) Provenance no raw video
+    # 8) Provenance
     prov = {
         "video_id": video_id,
         "url": url,
@@ -127,23 +193,31 @@ def ingest_one(video_id: str, title: str):
         "pipeline": "audio-first"
     }
 
-    # 8) Upload to S3
-    # raw-ish metadata for traceability
-    upload_file(info_json,    s3_key(video_id, "raw/metadata.json"),  "application/json")
+    # 9) Upload to S3
+    upload_file(info_json,    s3_key(video_id, "raw/metadata.json"),  "application/json") if info_json.exists() else None
     upload_file(ffprobe_path, s3_key(video_id, "raw/ffprobe.json"),   "application/json")
     if captions_best:
         upload_file(captions_best, s3_key(video_id, f"raw/{captions_best.name}"), "text/vtt")
-    # derived assets
-    upload_file(audio_wav,    s3_key(video_id, "derived/audio.wav"),             "audio/wav")
-    if captions_norm:
+    upload_file(audio_wav,    s3_key(video_id, "derived/audio.wav"),  "audio/wav")
+    if has_captions:
         upload_file(captions_norm, s3_key(video_id, "derived/captions.norm.en.vtt"), "text/vtt")
-    # housekeeping docs
+
     (vdir / "hashes.json").write_text(json.dumps(hashes, indent=2))
     (vdir / "provenance.json").write_text(json.dumps(prov, indent=2))
-    upload_file(vdir / "hashes.json",     s3_key(video_id, "hashes.json"),          "application/json")
-    upload_file(vdir / "provenance.json", s3_key(video_id, "raw/provenance.json"),  "application/json")
+    upload_file(vdir / "hashes.json",     s3_key(video_id, "hashes.json"),         "application/json")
+    upload_file(vdir / "provenance.json", s3_key(video_id, "raw/provenance.json"), "application/json")
 
-    # 9) DynamoDB upsert
+    # 10) Build DDB item (no None values)
+    assets = {
+        "audio_wav":     f"s3://{S3_BUCKET}/{s3_key(video_id, 'derived/audio.wav')}",
+        "metadata_json": f"s3://{S3_BUCKET}/{s3_key(video_id, 'raw/metadata.json')}" if info_json.exists() else None,
+        "ffprobe_json":  f"s3://{S3_BUCKET}/{s3_key(video_id, 'raw/ffprobe.json')}",
+    }
+    # strip Nones
+    assets = {k: v for k, v in assets.items() if v is not None}
+    if has_captions:
+        assets["captions_norm_vtt"] = f"s3://{S3_BUCKET}/{s3_key(video_id, 'derived/captions.norm.en.vtt')}"
+
     item = {
         "videoid": f"video#{video_id}",
         "version": "meta#v0",
@@ -153,41 +227,50 @@ def ingest_one(video_id: str, title: str):
         "processing_version": PROCESSING_VERSION,
         "pipeline": "audio-first",
         "status": "audio_ingested",
-        "has_captions": bool(captions_best),
-        "assets": {
-            "audio_wav": f"s3://{S3_BUCKET}/{s3_key(video_id, 'derived/audio.wav')}",
-            "metadata_json": f"s3://{S3_BUCKET}/{s3_key(video_id, 'raw/metadata.json')}",
-            "ffprobe_json": f"s3://{S3_BUCKET}/{s3_key(video_id, 'raw/ffprobe.json')}",
-            "captions_norm_vtt": (
-                f"s3://{S3_BUCKET}/{s3_key(video_id, 'derived/captions.norm.en.vtt')}" if captions_norm else None
-            )
-        },
+        "has_captions": has_captions,
+        "assets": assets,
         "hashes": hashes,
-        # Optional fields for later stages to fill:
-        "segments_planned": [],     # you can populate after alignment
-        "frames_ready": False
+        "segments_planned": [],
+        "frames_ready": False,
+        "channel_id": meta.get("channel_id"),
+        "channel_title": meta.get("channel"),
     }
-    # Enrich with yt fields if present
-    item["channel_id"] = meta.get("channel_id")
-    item["channel_title"] = meta.get("channel")
-    # duration may not exist on audio-only
     dur = meta.get("duration")
     if dur is not None:
         item["dur_sec"] = int(dur)
 
     ddb.put_item(Item=item)
 
-    # 10) Cleanup: keep or remove original downloaded audio file
+    # 11) Cleanup local progressive file if desired
     if not KEEP_SOURCE and audio_src.exists() and audio_src.name != "audio.wav":
         audio_src.unlink()
 
 def main():
+    parser = argparse.ArgumentParser(prog='ingest')
+    parser.add_argument('-s', '--start', help='Row to start ingestion process from', type=int)
+    args = parser.parse_args()
+
     if not MANIFEST_PATH.exists():
         print(MANIFEST_PATH)
         print("manifest.csv not found", file=sys.stderr)
         sys.exit(1)
+    
+    start_row = 0
+    if args.start:
+        with open(MANIFEST_PATH, 'r', newline='') as file:
+            reader = csv.reader(file)
+            row_count = sum(1 for row in reader)
+        if args.start > row_count:
+            print("Start row can not be greater than manifest.csv length")
+            sys.exit(1)
+        start_row = args.start
+    
+    
     with MANIFEST_PATH.open() as f:
         reader = csv.DictReader(f)
+        for _ in range(start_row):
+            next(reader, None)
+
         for row in reader:
             ingest_one(row["video_id"], row.get("title",""))
 
