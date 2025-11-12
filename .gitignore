@@ -1,3 +1,4 @@
 .env
 video-pipeline/logs/*
 work/
+.DS_Store
