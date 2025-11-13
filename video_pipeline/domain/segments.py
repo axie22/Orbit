@@ -17,9 +17,10 @@ def score_code_likelihood(text: str) -> float:
     sym_ratio = sum(ch in SYMBOLS for ch in t) / max(1, len(t))
     # light heuristic: keywords weigh more than symbols
     score = min(1.0, 0.2 * kw + 0.8 * sym_ratio)
-    # nudge down for pure narration phrases
-    if "time complexity" in t.lower() or "space complexity" in t.lower():
-        score *= 0.6
+
+    # can implement nudge down for pure narration phrases
+    # if "blah blah" in t: score *=0.5
+
     return score
 
 def plan_segments(utts: List[Dict], video_duration: float,
