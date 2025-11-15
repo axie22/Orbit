@@ -130,7 +130,7 @@ Provides structured question data for fine-tuning generation models and analyzin
 ---
 
 ### 3. LeetCode Solution Dataset (Python)
-[Kaggle](hhttps://www.kaggle.com/datasets/jacobhds/leetcode-solutions-and-content-kpis)  
+[Kaggle](https://www.kaggle.com/datasets/jacobhds/leetcode-solutions-and-content-kpis)  
 Contains LeetCode problem solutions from the forum section of leetcode with identifiers like upvotes, views, and the solutions in python3
 
 **Use Case:**  
