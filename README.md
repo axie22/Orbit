@@ -129,7 +129,16 @@ Provides structured question data for fine-tuning generation models and analyzin
 
 ---
 
-### 3. YouTube Coding Interview Walkthroughs
+### 3. LeetCode Solution Dataset (Python)
+[Kaggle](https://www.kaggle.com/datasets/jacobhds/leetcode-solutions-and-content-kpis)  
+Contains LeetCode problem solutions from the forum section of leetcode with identifiers like upvotes, views, and the solutions in python3
+
+**Use Case:**  
+Provides structured solution data for fine-tuning generation models and analyzing user-inputted solutions
+
+---
+
+### 4. YouTube Coding Interview Walkthroughs
 
 See [Video_Processing.md](./Documents/Video_Processing.md) for more info.
 
