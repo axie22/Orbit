@@ -4,3 +4,5 @@ faiss-cpu
 pandas
 python-dotenv
 tqdm
+scikit-learn 
+numpy
