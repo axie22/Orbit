@@ -25,7 +25,7 @@ export default function AuthButton() {
 
       <button
         onClick={() => signIn()}
-        className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 transition"
+        className="px-4 py-2 rounded-md bg-[#29293F] text-white hover:bg-blue-500 transition"
       >
         Sign in
       </button>
