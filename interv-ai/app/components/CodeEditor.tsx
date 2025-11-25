@@ -25,10 +25,9 @@ export default function CodeEditor({
         </span>
       </div>
 
-      {/* Monaco editor */}
       <Editor
         height="600px"
-        width="1000px"
+        width="1500px"
         defaultLanguage={language}
         value={code}
         theme="vs-dark"
