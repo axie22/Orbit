@@ -1,5 +1,3 @@
-import AuthButton from "./components/AuthButton";
-import CodeEditor from "./components/CodeEditor";
 import CustomNavbar from "./components/CustomNavbar";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
@@ -21,13 +19,6 @@ export default async function Home() {
             <p className="mt-2 text-gray-700">
               Pick a problem difficulty and our AI will interview you on the question
             </p>
-            
-            {/* <div className="mt-4 rounded-lg border border-gray-200 p-4 bg-white">
-              <p className="text-sm text-gray-600">
-                Good Luck!
-              </p>
-            </div>
-            <CodeEditor language="python" /> */}
           </section>
         ): (
           <>
