@@ -124,9 +124,9 @@ export default function Select() {
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
       <CustomNavbar />
-
       <main className="px-6 py-10 flex justify-center">
         <div className="max-w-6xl w-full grid gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
+            {/* Category Sidebar */}
             <CategorySidebar
             categories={CATEGORIES}
             selectedCategory={selectedCategory}
@@ -134,7 +134,7 @@ export default function Select() {
                 setSelectedCategory(cat);
                 setSelectedProblemId(null);
             }}/>
-            {/* Right: Problem selector + preview */}
+
           <div className="flex flex-col gap-6">
             {/* Problem selector list */}
             <Card>
@@ -163,7 +163,7 @@ export default function Select() {
                     }
                   }}
                 >
-                  AI pick for me
+                  Random
                 </Button>
               </CardHeader>
 

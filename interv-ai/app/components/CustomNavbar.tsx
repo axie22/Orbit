@@ -1,5 +1,10 @@
 "use client";
 
+import AuthButton from "./AuthButton";
+import { useSession } from "next-auth/react";
+import Logo from "../../public/Orbit_logo.svg"
+
+import Image from "next/image";
 import {
   Navbar,
   NavbarBrand,
@@ -8,8 +13,7 @@ import {
   Button,
   Link,
 } from "@heroui/react";
-import AuthButton from "./AuthButton";
-import { useSession } from "next-auth/react";
+
 
 export default function CustomNavbar() {
     const {data: session} = useSession();
@@ -25,6 +29,13 @@ export default function CustomNavbar() {
         <NavbarBrand className="gap-2">
             <Link href="/">
                 <div className="flex items-baseline gap-1">
+                <Image
+                    src={Logo}
+                    alt="Orbit Logo"
+                    width={28}
+                    height={28}
+                    className="object-contain"
+                />
                 <span className="font-semibold text-lg tracking-tight text-slate-900">
                     <span className="text-[#1A3D64]">Orbit</span>
                 </span>
