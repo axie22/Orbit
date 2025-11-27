@@ -26,14 +26,13 @@ export default function CustomNavbar() {
             <Link href="/">
                 <div className="flex items-baseline gap-1">
                 <span className="font-semibold text-lg tracking-tight text-slate-900">
-                    Interv<span className="text-[#1A3D64]">AI</span>
+                    <span className="text-[#1A3D64]">Orbit</span>
                 </span>
                 </div>
                 <span className="hidden sm:inline text-xs text-slate-500 border-l border-slate-200 pl-3 ml-2">
                 Your Technical Interview Playground
                 </span>
             </Link>
-            
         </NavbarBrand>
 
         <NavbarContent
@@ -71,9 +70,9 @@ export default function CustomNavbar() {
             {!isLoggedIn && (
                 <>
                 <NavbarItem>
-                <Link href="/about" color="foreground">
-                    About
-                </Link>
+                    <Link href="/about" color="foreground">
+                        About
+                    </Link>
                 </NavbarItem>
                 </>
             )}

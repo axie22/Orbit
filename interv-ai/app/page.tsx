@@ -23,7 +23,7 @@ export default async function Home() {
         ): (
           <>
             <h1 className="text-4xl sm:text-5xl font-mono text-[#1F2937]">
-              Interv<span className="text-[#6B7280]">AI</span>
+              <span className="text-[#6B7280]">Orbit</span>
             </h1>
 
             <p className="text-lg sm:text-xl text-[#1F2937] leading-relaxed">

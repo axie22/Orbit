@@ -17,7 +17,7 @@ export default function About() {
                     </h1>
 
                     <p className="text-lg text-slate-600 max-w-xl">
-                    IntervAI is a technical interview practice platform built by engineers,
+                    Orbit is a technical interview practice platform built by engineers,
                     for engineers.
                     </p>
 
@@ -46,13 +46,13 @@ export default function About() {
                 </h2>
 
                 <p className="text-slate-700 leading-relaxed text-[15px] max-w-3xl mx-auto">
-                    IntervAI was created to help engineers prepare for technical interviews with clarity 
+                    Orbit was created to help engineers prepare for technical interviews with clarity 
                     and confidence. Our platform combines a developer-grade code editor with an adaptive 
                     AI interviewer that evaluates your solutions, explains mistakes, and guides you toward 
                     stronger problem-solving patterns.
                     <br /><br />
                     Whether you are practicing algorithms, refining your reasoning, or sharpening your 
-                    communication, IntervAI simulates a realistic interview experience—minus the pressure.
+                    communication, Orbit simulates a realistic interview experience—minus the pressure.
                 </p>
                 </section>
 
@@ -65,7 +65,7 @@ export default function About() {
                     <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
                     <h3 className="text-lg font-semibold text-slate-900">Alexander Xie</h3>
                     <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                        Alex is a backend-leaning full-stack engineer with a strong focus on AI systems and machine learning powered applications. 
+                        Alex is a backend-leaning full-stack engineer with a focus on AI systems and machine learning powered applications. 
                         He has experience building data pipelines, training LLMs, and developing the backend services that support them. 
                         His work centers on designing scalable architectures, optimizing developer workflows, and connecting intelligent models with real-world product features.
                     </p>
