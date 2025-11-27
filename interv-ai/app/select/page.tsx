@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import CustomNavbar from "../components/CustomNavbar";
+import CategorySidebar from "../components/CategorySidebar";
+
+import { Category, Problem, Difficulty, CATEGORIES } from "../lib/definitions";
+
 import {
   Card,
   CardHeader,
@@ -10,46 +14,6 @@ import {
   Chip,
 } from "@heroui/react";
 
-type Difficulty = "Easy" | "Medium" | "Hard";
-
-type Category =
-  | "Arrays"
-  | "Strings"
-  | "Hashing"
-  | "Two Pointers"
-  | "Sliding Window"
-  | "Linked List"
-  | "Intervals"
-  | "Heap"
-  | "Trees"
-  | "Graphs"
-  | "Backtracking"
-  | "Dynamic Programming"
-  | "Misc";
-
-type Problem = {
-  id: number;
-  title: string;
-  difficulty: Difficulty;
-  category: Category;
-  blurb: string;
-};
-
-const CATEGORIES: Category[] = [
-  "Arrays",
-  "Strings",
-  "Hashing",
-  "Two Pointers",
-  "Sliding Window",
-  "Linked List",
-  "Heap",
-  "Intervals",
-  "Trees",
-  "Graphs",
-  "Backtracking",
-  "Dynamic Programming",
-  "Misc",
-];
 
 // Fake data that we'll replace once its uploaded
 const PROBLEMS: Problem[] = [
@@ -163,39 +127,14 @@ export default function Select() {
 
       <main className="px-6 py-10 flex justify-center">
         <div className="max-w-6xl w-full grid gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
-          {/* Left: Categories */}
-          <Card className="h-full">
-            <CardHeader className="px-4 py-3 border-b border-slate-200">
-              <h1 className="text-sm font-semibold tracking-wide text-slate-900 uppercase">
-                Categories
-              </h1>
-            </CardHeader>
-            <CardBody className="p-0">
-              <nav className="flex flex-col">
-                {CATEGORIES.map((cat) => {
-                  const isActive = cat === selectedCategory;
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => {
-                        setSelectedCategory(cat);
-                        setSelectedProblemId(null);
-                      }}
-                      className={`w-full text-left px-4 py-3 text-sm border-b border-slate-100 transition-colors ${
-                        isActive
-                          ? "bg-slate-900 text-slate-50"
-                          : "hover:bg-slate-50 text-slate-700"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  );
-                })}
-              </nav>
-            </CardBody>
-          </Card>
-
-          {/* Right: Problem selector + preview */}
+            <CategorySidebar
+            categories={CATEGORIES}
+            selectedCategory={selectedCategory}
+            onSelect={(cat) => {
+                setSelectedCategory(cat);
+                setSelectedProblemId(null);
+            }}/>
+            {/* Right: Problem selector + preview */}
           <div className="flex flex-col gap-6">
             {/* Problem selector list */}
             <Card>
