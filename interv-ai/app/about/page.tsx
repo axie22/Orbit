@@ -1,7 +1,9 @@
 import CustomNavbar from "../components/CustomNavbar"
-import Image from 'next/image';
 
 import technicalInterviewPic from "../../public/technical_interview.png"
+import Logo from "../../public/Orbit_logo.svg"
+
+import Image from 'next/image';
 
 export default function About() {
     return (
@@ -10,6 +12,21 @@ export default function About() {
 
         <main className="min-h-screen bg-[#F8F9FA] px-6 py-16 flex justify-center">
             <div className="max-w-6xl w-full flex flex-col gap-16">
+                <section className="flex flex-col items-center text-center gap-6">
+                    <div className="flex items-center gap-3">
+                        <Image
+                        src={Logo}
+                        alt="Orbit Logo"
+                        width={100}
+                        height={100}
+                        className="object-contain"
+                        />
+                        <h1 className="text-5xl font-bold tracking-tight text-slate-900">
+                        Orbit
+                        </h1>
+                    </div>
+                </section>
+                
                 <section className="grid gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center">
                 <div className="space-y-5 text-left">
                     <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight">
