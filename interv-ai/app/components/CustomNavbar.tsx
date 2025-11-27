@@ -53,7 +53,7 @@ export default function CustomNavbar() {
             {isLoggedIn && (
                 <>
                     <NavbarItem>
-                    <Link href="/practice" color="foreground">
+                    <Link href="/select" color="foreground">
                         Practice
                     </Link>
                     </NavbarItem>
