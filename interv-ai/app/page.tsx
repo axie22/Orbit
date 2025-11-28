@@ -43,25 +43,24 @@ export default async function Home() {
         <div className="max-w-5xl w-full flex flex-col gap-24">
           {isLoggedIn ? (
             <>
-              <LoggedInHero name={session?.user?.name ?? "engineer"} />
+              <LoggedInHero name={session?.user?.name ?? "Engineer"} />
 
               <QuickActionsRow />
 
               <RecommendedProblemsCard problems={recommendedProblems} />
 
               <section className="text-center">
-                <p className="text-xs text-slate-500 font-mono uppercase tracking-[0.18em]">
+                <p className="text-xs text-slate-700 font-mono uppercase tracking-[0.18em]">
                   Orbit
                 </p>
                 <p className="text-sm text-slate-600 mt-2">
-                  Consistency beats cramming. Aim for one session a day.
+                  Consistency Beats Cramming
                 </p>
               </section>
             </>
           ) : (
             <>
               <LoggedOutHero />
-              {/* you can reuse QuickActionsRow here later if you want, or a lighter variant */}
             </>
           )}
         </div>

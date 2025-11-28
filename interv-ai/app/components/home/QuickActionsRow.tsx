@@ -11,7 +11,7 @@ export default function QuickActionsRow() {
             Start new session
           </h3>
           <p className="text-xs text-slate-600">
-            Choose a problem and begin a fresh AI interview.
+            Choose a problem and begin a fresh interview
           </p>
           <Button
             as={Link}
@@ -31,7 +31,7 @@ export default function QuickActionsRow() {
             Continue last session
           </h3>
           <p className="text-xs text-slate-600">
-            Resume your most recent interview (coming soon).
+            Resume your most recent interview (coming soon)
           </p>
           <Button
             size="sm"
@@ -51,7 +51,7 @@ export default function QuickActionsRow() {
             Browse problems
           </h3>
           <p className="text-xs text-slate-600">
-            Explore problems by topic and difficulty before you start.
+            Explore problems by topic and difficulty before you start
           </p>
           <Button
             as={Link}
