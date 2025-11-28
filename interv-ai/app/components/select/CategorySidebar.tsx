@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardBody } from "@heroui/react";
-import { Category } from "../lib/definitions";
+import { Category } from "../../lib/definitions";
 
 type CategorySidebarProps = {
   categories: Category[];

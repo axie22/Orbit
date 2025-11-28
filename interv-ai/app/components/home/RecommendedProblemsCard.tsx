@@ -1,8 +1,7 @@
 "use client";
 
 import { Card, CardBody, Chip, Button, Link } from "@heroui/react";
-
-export type Difficulty = "Easy" | "Medium" | "Hard";
+import { Difficulty } from "@/app/lib/definitions";
 
 export type RecommendedProblem = {
   id: number;
@@ -32,7 +31,7 @@ export default function RecommendedProblemsCard({ problems }: Props) {
           Recommended for you
         </h2>
         <Link
-          href="/problems"
+          href="/pr+oblems"
           className="text-xs text-slate-500 hover:text-slate-700"
         >
           View all problems →
