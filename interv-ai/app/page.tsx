@@ -2,47 +2,69 @@ import CustomNavbar from "./components/CustomNavbar";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
 
+import LoggedOutHero from "./components/home/LoggedOutHero";
+import LoggedInHero from "./components/home/LoggedInHero";
+import QuickActionsRow from "./components/home/QuickActionsRow";
+import RecommendedProblemsCard, {
+  RecommendedProblem,
+} from "./components/home/RecommendedProblemsCard";
+
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
   const isLoggedIn = !!session;
 
+  const recommendedProblems: RecommendedProblem[] = [
+    {
+      id: 1,
+      title: "Two Sum",
+      difficulty: "Easy",
+      category: "Arrays & Hashing",
+    },
+    {
+      id: 2,
+      title: "Longest Substring Without Repeating Characters",
+      difficulty: "Medium",
+      category: "Sliding Window",
+    },
+    {
+      id: 3,
+      title: "Binary Tree Level Order Traversal",
+      difficulty: "Medium",
+      category: "Trees & Graphs",
+    },
+  ];
+
   return (
     <div>
       <CustomNavbar />
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 py-10 bg-[#F8F9FA]">
-      <div className="max-w-2xl flex flex-col items-center text-center gap-8">     
-        {isLoggedIn ? (
-          <section className="mt-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Welcome back, {session?.user?.name ?? "candidate"}
-            </h2>
-            <p className="mt-2 text-gray-700">
-              Pick a problem difficulty and our AI will interview you on the question
-            </p>
-          </section>
-        ): (
-          <>
-            <h1 className="text-4xl sm:text-5xl font-mono text-[#1F2937]">
-              <span className="text-[#6B7280]">Orbit</span>
-            </h1>
 
-            <p className="text-lg sm:text-xl text-[#1F2937] leading-relaxed">
-              Your personal AI-powered technical interviewer.  
-              Practice coding, system design, and behavioral interviews with real-time feedback.
-            </p>
-            <section className="mt-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Get started in seconds
-              </h2>
-              <p className="mt-2 text-gray-700">
-                Sign in to unlock coding questions, a Monaco-based editor, and AI feedback powered by Llama.
-              </p>
-            </section>
-          </>
-        )}
-      </div>
-    </main>
+      <main className="min-h-screen bg-[#F8F9FA] px-6 py-20 flex justify-center">
+        <div className="max-w-5xl w-full flex flex-col gap-24">
+          {isLoggedIn ? (
+            <>
+              <LoggedInHero name={session?.user?.name ?? "Engineer"} />
+
+              <QuickActionsRow />
+
+              <RecommendedProblemsCard problems={recommendedProblems} />
+
+              <section className="text-center">
+                <p className="text-xs text-slate-700 font-mono uppercase tracking-[0.18em]">
+                  Orbit
+                </p>
+                <p className="text-sm text-slate-600 mt-2">
+                  Consistency Beats Cramming
+                </p>
+              </section>
+            </>
+          ) : (
+            <>
+              <LoggedOutHero />
+            </>
+          )}
+        </div>
+      </main>
     </div>
-    
   );
 }
