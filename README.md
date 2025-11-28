@@ -1,7 +1,10 @@
-# InterviewPrepAI — Personalized Interview Preparation Assistant
+# Orbit — Personalized Interview Preparation Assistant
 
 ## Overview
-**InterviewPrepAI** is an intelligent, personalized interview preparation system that leverages large language models and retrieval-augmented generation to simulate technical interviews, evaluate responses, and provide targeted feedback.  
+
+![Orbit Website Photo](./Documents/Orbit_Website.png)
+
+**Orbit** is an intelligent, personalized interview preparation system that leverages large language models and retrieval-augmented generation to simulate technical interviews, evaluate responses, and provide targeted feedback.  
 The system aims to make interview preparation more engaging and adaptive, with a focus on coding and system design interviews.
 
 ---

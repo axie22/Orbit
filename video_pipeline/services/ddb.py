@@ -23,3 +23,9 @@ def write_segments_item(video_id: str, segments, scorer_version: str, pad_sec: f
     if notes:
         item["notes"] = notes
     ddb.put_item(Item=item)
+
+def read_segments(video_id: str):
+    resp = ddb.get_item(
+        Key={"videoid": f"video#{video_id}", "version": "segments#v0"}
+    )
+    return resp.get("Item")
