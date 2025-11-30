@@ -40,10 +40,10 @@ export default function Select() {
     cursor?: string | null;
     append?: boolean;
   }) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
+    try {
       const params = new URLSearchParams({
         category,
         limit: "20",
@@ -57,29 +57,31 @@ export default function Select() {
 
       const data: ProblemsApiResponse = await res.json();
 
-      // Map API problems → frontend Problem type
       const mapped: Problem[] = data.items.map((p) => ({
         id: Number(p.problemID),
-        title: p.title,
+        title: p.title ?? "Untitled",
         difficulty: p.difficulty,
         category: p.category as Category,
-        blurb: p.blurb,
+        description: p.description ?? "",
       }));
 
       setProblems((prev) => (append ? [...prev, ...mapped] : mapped));
       setCursor(data.nextCursor);
       setHasMore(data.hasMore);
 
-      // Reset selected problem if we replaced the list
       if (!append && mapped.length > 0) {
         setSelectedProblemId(mapped[0].id);
       }
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred.");
-      }
+    } catch (err) {
+      console.error(err);
+      const message =
+        err instanceof Error ? err.message : "Failed to load problems.";
+      setError(message);
+      setProblems([]);
+      setCursor(null);
+      setHasMore(false);
+    } finally {
+      setIsLoading(false); // <-- this is the key
     }
   };
 
@@ -263,7 +265,7 @@ export default function Select() {
                 {selectedProblem ? (
                   <>
                     <p className="text-sm text-slate-700 leading-relaxed">
-                      {selectedProblem.blurb}
+                      {selectedProblem.description}
                     </p>
 
                     <div className="flex flex-wrap items-center justify-between gap-3">
