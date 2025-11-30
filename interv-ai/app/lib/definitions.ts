@@ -1,32 +1,40 @@
 export const CATEGORIES: Category[] = [
   "Array",
-  "Strings",
-  "Hashing",
+  "String",
+  "Hash Table",
+  "Stack",
   "Two Pointers",
-  "Sliding Window",
   "Linked List",
   "Heap",
-  "Intervals",
-  "Trees",
-  "Graphs",
+  "Binary Search",
+  "Tree",
+  "Graph",
+  "Greedy",
   "Backtracking",
   "Dynamic Programming",
+  "Sort",
+  "Math",
+  "Bit Manipulation",
   "Misc",
 ];
 
 export type Category =
   | "Array"
-  | "Strings"
-  | "Hashing"
+  | "String"
+  | "Hash Table"
+  | "Stack"
   | "Two Pointers"
-  | "Sliding Window"
   | "Linked List"
-  | "Intervals"
   | "Heap"
-  | "Trees"
-  | "Graphs"
+  | "Binary Search"
+  | "Tree"
+  | "Graph"
+  | "Greedy"
   | "Backtracking"
   | "Dynamic Programming"
+  | "Sort"
+  | "Math"
+  | "Bit Manipulation"
   | "Misc";
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
@@ -36,7 +44,7 @@ export type Problem = {
   title: string;
   difficulty: Difficulty;
   category: Category;
-  blurb: string;
+  description: string;
 };
 
 
@@ -45,7 +53,7 @@ export type ApiProblem = {
   title: string;
   difficulty: Difficulty;
   category: string;
-  blurb: string;
+  description: string;
 };
 
 export type ProblemsApiResponse = {
