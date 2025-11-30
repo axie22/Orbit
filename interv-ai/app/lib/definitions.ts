@@ -1,7 +1,5 @@
-
-// Use these in select page
 export const CATEGORIES: Category[] = [
-  "Arrays",
+  "Array",
   "Strings",
   "Hashing",
   "Two Pointers",
@@ -16,9 +14,8 @@ export const CATEGORIES: Category[] = [
   "Misc",
 ];
 
-
 export type Category =
-  | "Arrays"
+  | "Array"
   | "Strings"
   | "Hashing"
   | "Two Pointers"
@@ -40,4 +37,19 @@ export type Problem = {
   difficulty: Difficulty;
   category: Category;
   blurb: string;
+};
+
+
+export type ApiProblem = {
+  problemID: string;
+  title: string;
+  difficulty: Difficulty;
+  category: string;
+  blurb: string;
+};
+
+export type ProblemsApiResponse = {
+  items: ApiProblem[];
+  nextCursor: string | null;
+  hasMore: boolean;
 };
