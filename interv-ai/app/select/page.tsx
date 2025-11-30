@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import CustomNavbar from "../components/CustomNavbar";
-import CategorySidebar from "../components/CategorySidebar";
+import CategorySidebar from "../components/select/CategorySidebar";
 
 import { Category, Problem, Difficulty, CATEGORIES } from "../lib/definitions";
 
