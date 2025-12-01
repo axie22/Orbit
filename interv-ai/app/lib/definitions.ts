@@ -1,35 +1,40 @@
-
-// Use these in select page
 export const CATEGORIES: Category[] = [
-  "Arrays",
-  "Strings",
-  "Hashing",
+  "Array",
+  "String",
+  "Hash Table",
+  "Stack",
   "Two Pointers",
-  "Sliding Window",
   "Linked List",
   "Heap",
-  "Intervals",
-  "Trees",
-  "Graphs",
+  "Binary Search",
+  "Tree",
+  "Graph",
+  "Greedy",
   "Backtracking",
   "Dynamic Programming",
+  "Sort",
+  "Math",
+  "Bit Manipulation",
   "Misc",
 ];
 
-
 export type Category =
-  | "Arrays"
-  | "Strings"
-  | "Hashing"
+  | "Array"
+  | "String"
+  | "Hash Table"
+  | "Stack"
   | "Two Pointers"
-  | "Sliding Window"
   | "Linked List"
-  | "Intervals"
   | "Heap"
-  | "Trees"
-  | "Graphs"
+  | "Binary Search"
+  | "Tree"
+  | "Graph"
+  | "Greedy"
   | "Backtracking"
   | "Dynamic Programming"
+  | "Sort"
+  | "Math"
+  | "Bit Manipulation"
   | "Misc";
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
@@ -39,5 +44,20 @@ export type Problem = {
   title: string;
   difficulty: Difficulty;
   category: Category;
-  blurb: string;
+  description: string;
+};
+
+
+export type ApiProblem = {
+  problemID: string;
+  title: string;
+  difficulty: Difficulty;
+  category: string;
+  description: string;
+};
+
+export type ProblemsApiResponse = {
+  items: ApiProblem[];
+  nextCursor: string | null;
+  hasMore: boolean;
 };
