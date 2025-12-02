@@ -12,8 +12,8 @@ const difficultyColor: Record<Difficulty, "success" | "warning" | "danger"> = {
 type ProblemSelectorCardProps = {
   selectedCategory: Category;
   problems: Problem[];
-  selectedProblemId: number | null;
-  onSelectProblem: (id: number) => void;
+  selectedProblemId: string | null; 
+  onSelectProblem: (id: string) => void;
   isLoading: boolean;
   error: string | null;
   hasMore: boolean;
@@ -31,6 +31,7 @@ export default function ProblemSelectorCard({
   onLoadMore,
 }: ProblemSelectorCardProps) {
   const filteredProblems = problems;
+
   const selectedProblem =
     filteredProblems.find((p) => p.id === selectedProblemId) ||
     filteredProblems[0] ||
@@ -49,6 +50,7 @@ export default function ProblemSelectorCard({
             with the AI interviewer.
           </p>
         </div>
+
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -60,7 +62,7 @@ export default function ProblemSelectorCard({
                   filteredProblems[
                     Math.floor(Math.random() * filteredProblems.length)
                   ];
-                onSelectProblem(random.id);
+                onSelectProblem(random.id);   // ID is string
               }
             }}
             isDisabled={filteredProblems.length === 0}
@@ -85,7 +87,8 @@ export default function ProblemSelectorCard({
           <>
             <ul className="divide-y divide-slate-100">
               {filteredProblems.map((problem) => {
-                const isActive = problem.id === selectedProblem?.id;
+                const isActive = problem.id === selectedProblemId;
+
                 return (
                   <li
                     key={problem.id}
@@ -94,7 +97,7 @@ export default function ProblemSelectorCard({
                         ? "bg-slate-900 text-slate-50"
                         : "hover:bg-slate-50 text-slate-800"
                     }`}
-                    onClick={() => onSelectProblem(problem.id)}
+                    onClick={() => onSelectProblem(problem.id)}  // string
                   >
                     <div className="flex flex-col">
                       <span className="font-medium">{problem.title}</span>

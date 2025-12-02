@@ -6,7 +6,10 @@ export default function Practice() {
         <div>
             <CustomNavbar />
             <main className="min-h-screen flex flex-col items-center justify-center px-6 py-10 bg-[#F8F9FA]">
-                <CodeEditor language="python" />
+                <CodeEditor 
+                language="python" 
+                initialCode="# Write your solution "
+                />
             </main>
         </div>
     );
