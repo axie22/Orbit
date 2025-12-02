@@ -1,70 +1,62 @@
-"""
-src/llm_client.py
-
-Minimal Groq chat wrapper. Loads GROQ_API_KEY and GROQ_MODEL from environment (via python-dotenv).
-Returns the assistant text for a chat-style messages list.
-
-Usage:
-    from src.llm_client import chat
-    messages = [
-        {"role": "system", "content": "You are helpful."},
-        {"role": "user", "content": "Say hi"}
-    ]
-    resp_text = chat(messages)
-"""
-
+### """ File for calling google gemini Fine Tuned LLM to generate interview responses """###
+import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+# Configure the API
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-if not GROQ_API_KEY:
-    raise EnvironmentError(
-        "GROQ_API_KEY is not set. Create a .env file at project root with GROQ_API_KEY=your_key"
+def generate_response(chat_history, current_user_code, problem_context):
+    """
+    chat_history: List of messages from the frontend
+    current_user_code: The Python code currently in the editor
+    problem_context: The dict returned from problem_retriever.py
+    """
+    
+    # 1. Build the System Prompt (The Persona)
+    # This instructs Gemini on how to behave.
+    system_instruction = f"""
+    You are an expert Senior Staff Software Engineer conducting a mock technical interview.
+    The user is solving the problem: "{problem_context['title']}".
+    
+    --- PROBLEM DESCRIPTION ---
+    {problem_context['description']}
+    
+    --- HIDDEN SOLUTION (FOR YOUR EYES ONLY) ---
+    {problem_context['solution_code']}
+    
+    --- INTERVIEWER HINTS (Derived from real interviews) ---
+    {problem_context['hints']}
+    
+    --- CURRENT USER CODE ---
+    ```python
+    {current_user_code}
+    ```
+    
+    --- YOUR INSTRUCTIONS ---
+    1. Be encouraging but rigorous.
+    2. Use the Socratic Method. DO NOT write the code for the user. Ask questions to guide them.
+    3. If the user's code has a bug, ask them to trace their code with an example input.
+    4. Keep your responses concise (under 3 sentences usually).
+    5. If the user is completely stuck, use one of the "INTERVIEWER HINTS" provided above.
+    """
+
+    # 2. Initialize the Model
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash", 
+        system_instruction=system_instruction
     )
 
-try:
-    from groq import Groq
-except Exception as e:
-    raise RuntimeError("Please install the `groq` Python package (pip install groq).") from e
-
-_client = Groq(api_key=GROQ_API_KEY)
-
-
-def chat(messages, model: str | None = None, max_tokens: int = 1024, temperature: float = 0.2):
-    """
-    messages: list of {"role":"system"/"user"/"assistant", "content": "..."}
-    Returns: assistant string content
-    """
-    model = model or GROQ_MODEL
-    # Defensive validation of messages
-    if not isinstance(messages, list) or not messages:
-        raise ValueError("messages must be a non-empty list of message dicts")
-
-    # Call Groq chat completions
-    resp = _client.chat.completions.create(
-        messages=messages,
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
-
-    # Response structure: resp.choices[0].message.content
+    # 3. Format History for Gemini
+    # Gemini expects logic to be strict about user/model turns. 
+    # We assume 'chat_history' comes in clean from the frontend.
+    
     try:
-        return resp.choices[0].message.content
+        # We use generate_content with the full history list
+        # This is stateless; we send the whole conversation every time.
+        response = model.generate_content(chat_history)
+        return response.text
     except Exception as e:
-        # Fallback: return str(resp)
-        return str(resp)
-
-
-# Quick smoke test (only run when invoked directly)
-if __name__ == "__main__":
-    msg = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Write a one-line JSON: {'hello':'world'}"}
-    ]
-    print("Calling Groq chat (make sure GROQ_API_KEY is set)...")
-    print(chat(msg))
+        return f"I'm having trouble thinking right now. (Error: {str(e)})"

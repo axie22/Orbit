@@ -1,41 +1,42 @@
-import random
+import boto3
+import os
+from botocore.exceptions import ClientError
+from dotenv import load_dotenv
 
-class ProblemRetriever:
-    def __init__(self, problems_df, solutions_df):
-        self.problems = problems_df
-        self.solutions = solutions_df
+load_dotenv()
 
-    # ---------------------------
-    # Basic retrieval functions
-    # ---------------------------
+# Initialize DynamoDB Client
+dynamodb = boto3.resource(
+    'dynamodb',
+    region_name=os.getenv("AWS_REGION", "us-east-2")
+)
 
-    def get_random_problem(self, difficulty=None):
-        df = self.problems
-        if difficulty:
-            df = df[df["difficulty"].str.lower() == difficulty.lower()]
-        if df.empty:
-            return None
-        return df.sample(1).iloc[0]
+TABLE_NAME = os.getenv("DYNAMODB_TABLE_NAME", "Orbit_Interview_Questions")
+table = dynamodb.Table(TABLE_NAME)
 
-    def get_problem_by_id(self, problem_id):
-        result = self.problems[self.problems["id"] == problem_id]
-        return result.iloc[0] if not result.empty else None
-
-    def search_by_keyword(self, keyword):
-        keyword = keyword.lower()
-        return self.problems[
-            self.problems["description"].str.lower().str.contains(keyword)
-            | self.problems["title"].str.lower().str.contains(keyword)
-        ]
-
-    # ---------------------------
-    # Problem + Solution pairing
-    # ---------------------------
-
-    def get_problem_with_solutions(self, problem_id):
-        problem = self.get_problem_by_id(problem_id)
-        if problem is None:
+def get_problem_context(problem_id: str):
+    """
+    Fetches the problem details, solution, and transcript hints from DynamoDB.
+    """
+    try:
+        response = table.get_item(Key={'problemId': problem_id})
+        
+        if 'Item' not in response:
             return None
 
-        sols = self.solutions[self.solutions["id"] == problem_id]
-        return problem, sols
+        item = response['Item']
+
+        # We restructure the data to be clean for the LLM
+        return {
+            "title": item.get('title', 'Unknown Problem'),
+            "description": item.get('description', ''),
+            "difficulty": item.get('difficulty', 'Medium'),
+            # The Hidden Solution the bot sees but doesn't share
+            "solution_code": item.get('solutions', ''), 
+            # If you processed videos, these hints go here
+            "hints": item.get('transcript', 'No specific hints available. Use general knowledge.')
+        }
+
+    except ClientError as e:
+        print(f"Error fetching from DynamoDB: {e}")
+        return None
