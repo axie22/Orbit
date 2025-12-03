@@ -11,7 +11,7 @@ const difficultyColor: Record<Difficulty, "success" | "warning" | "danger"> = {
 
 type ProblemPreviewCardProps = {
   selectedProblem: Problem | null;
-  onStartSession: (problemId: number) => void;
+  onStartSession: (problemId: string) => void;
 };
 
 export default function ProblemPreviewCard({

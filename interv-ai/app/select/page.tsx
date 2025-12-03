@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 import CustomNavbar from "../components/CustomNavbar";
 import CategorySidebar from "../components/select/CategorySidebar";
 import ProblemSelectorCard from "../components/select/ProblemSelectorCard";
@@ -14,10 +16,10 @@ import {
 } from "../lib/definitions";
 
 export default function Select() {
+  const router = useRouter();
+
   const [selectedCategory, setSelectedCategory] = useState<Category>("Array");
-  const [selectedProblemId, setSelectedProblemId] = useState<number | null>(
-    null
-  );
+  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
 
   const [problems, setProblems] = useState<Problem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export default function Select() {
   const loadProblems = async ({
     category,
     cursor: cursorArg,
-    append,
+    append = false,
   }: {
     category: Category;
     cursor?: string | null;
@@ -52,7 +54,7 @@ export default function Select() {
       const data: ProblemsApiResponse = await res.json();
 
       const mapped: Problem[] = data.items.map((p) => ({
-        id: Number(p.problemID),
+        id: String(p.problemID),
         title: p.title,
         difficulty: p.difficulty,
         category: p.category as Category,
@@ -67,7 +69,7 @@ export default function Select() {
         setSelectedProblemId(mapped[0].id);
       }
     } catch (err) {
-      console.error(err);
+      console.error("LoadProblems error:", err);
       const message =
         err instanceof Error ? err.message : "Failed to load problems.";
       setError(message);
@@ -87,12 +89,10 @@ export default function Select() {
 
     loadProblems({ category: selectedCategory, append: false });
   }, [selectedCategory]);
-
-  const filteredProblems = problems;
-
+  
   const selectedProblem =
-    filteredProblems.find((p) => p.id === selectedProblemId) ||
-    filteredProblems[0] ||
+    problems.find((p) => p.id === selectedProblemId) ||
+    problems[0] ||
     null;
 
   return (
@@ -101,19 +101,19 @@ export default function Select() {
       <main className="px-6 py-10 flex justify-center">
         <div className="max-w-6xl w-full grid gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
           <CategorySidebar
-            categories={CATEGORIES}
+            categories={[...CATEGORIES]}   
             selectedCategory={selectedCategory}
-            onSelect={(cat) => {
-              setSelectedCategory(cat);
-            }}
+            onSelect={(cat) => setSelectedCategory(cat)}
           />
 
           <div className="flex flex-col gap-6">
             <ProblemSelectorCard
               selectedCategory={selectedCategory}
-              problems={filteredProblems}
+              problems={problems}
               selectedProblemId={selectedProblemId}
-              onSelectProblem={(id) => setSelectedProblemId(id)}
+              onSelectProblem={(id) => {
+                setSelectedProblemId(String(id));
+              }}
               isLoading={isLoading}
               error={error}
               hasMore={hasMore}
@@ -129,8 +129,10 @@ export default function Select() {
             <ProblemPreviewCard
               selectedProblem={selectedProblem}
               onStartSession={(id) => {
-                console.log("Start session for problem id", id);
-                // later we push to /practice page with problemId={id}
+                const stringId = String(id);
+                console.log("Start session → routing:", stringId);
+
+                router.push(`/practice/${stringId}`);
               }}
             />
           </div>
