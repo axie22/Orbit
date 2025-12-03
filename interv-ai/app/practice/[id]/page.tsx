@@ -1,6 +1,8 @@
 import CustomNavbar from "@/app/components/CustomNavbar";
 import CodeEditor from "@/app/components/CodeEditor";
 
+import MarkdownRenderer from "../../components/MarkdownRenderer";
+
 export default async function PracticePage({
     params,
 }: {
@@ -32,9 +34,7 @@ export default async function PracticePage({
 
         <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-6 max-w-3xl mb-10">
           <h2 className="text-xl font-medium mb-3">Description</h2>
-          <pre className="whitespace-pre-wrap text-gray-800 text-sm">
-            {problem.description}
-          </pre>
+          <MarkdownRenderer content={problem.description}/>
         </div>
 
         <CodeEditor language="python" initialCode="# Write your solution here" />
