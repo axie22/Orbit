@@ -2,12 +2,10 @@ import CustomNavbar from "@/app/components/CustomNavbar";
 import CodeEditor from "@/app/components/CodeEditor";
 
 import MarkdownRenderer from "../../components/MarkdownRenderer";
+import VoiceRecorderSection from "../VoiceRecorderSection";
+  
 
-export default async function PracticePage({
-    params,
-}: {
-    params: Promise<{ id: string }>; 
-}) {
+export default async function PracticePage({ params, }: { params: Promise<{ id: string }>; }) {
     const { id } = await params;   
 
     console.log("PracticePage fetching:", id);
@@ -36,6 +34,8 @@ export default async function PracticePage({
           <h2 className="text-xl font-medium mb-3">Description</h2>
           <MarkdownRenderer content={problem.description}/>
         </div>
+
+        <VoiceRecorderSection />
 
         <CodeEditor language="python" initialCode="# Write your solution here" />
       </main>
