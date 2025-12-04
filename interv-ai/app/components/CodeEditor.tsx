@@ -11,8 +11,15 @@ type CodeEditorProps = {
 export default function CodeEditor({
   initialCode = "# Write your solution here\n",
   language = "python",
-}: CodeEditorProps) {
+  onCodeChange,
+}: CodeEditorProps & { onCodeChange?: (code: string) => void }) {
   const [code, setCode] = useState(initialCode);
+
+  const handleEditorChange = (value: string | undefined) => {
+    const newCode = value ?? "";
+    setCode(newCode);
+    onCodeChange?.(newCode);
+  };
 
   return (
     <div className="w-full rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -31,7 +38,7 @@ export default function CodeEditor({
         defaultLanguage={language}
         value={code}
         theme="vs-dark"
-        onChange={(value) => setCode(value ?? "")}
+        onChange={handleEditorChange}
         options={{
           fontSize: 14,
           minimap: { enabled: false },
