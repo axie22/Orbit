@@ -1,112 +1,154 @@
 "use client";
 
 import {
-    LiveKitRoom,
-    RoomAudioRenderer,
-    ControlBar,
-    useLocalParticipant,
+  LiveKitRoom,
+  RoomAudioRenderer,
+  ControlBar,
+  useLocalParticipant,
+  useRoomContext,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { useEffect, useState, useCallback } from "react";
 import CodeEditor from "@/app/components/CodeEditor";
-import { RoomEvent, DataPacket_Kind } from "livekit-client";
+import { RoomEvent, DataPacket_Kind, ConnectionState } from "livekit-client";
 
 type PracticeSessionProps = {
-    problemId: string;
-    initialCode: string;
+  problemId: string;
+  initialCode: string;
 };
 
 export default function PracticeSession({
-    problemId,
-    initialCode,
+  problemId,
+  initialCode,
 }: PracticeSessionProps) {
-    const [token, setToken] = useState("");
-    const [code, setCode] = useState(initialCode);
+  const [token, setToken] = useState("");
+  const [code, setCode] = useState(initialCode);
 
-    // Generate a random username for the session once
-    const [username] = useState(() => `user-${Math.random().toString(36).slice(2, 7)}`);
-    const [roomName] = useState(() => `practice-${problemId}-${username}`);
+  // Generate a random username for the session once
+  const [username] = useState(
+    () => `user-${Math.random().toString(36).slice(2, 7)}`
+  );
+  const [roomName] = useState(() => `practice-${problemId}-${username}`);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const resp = await fetch(
-                    `/api/token?room=${roomName}&username=${username}`
-                );
-                const data = await resp.json();
-                setToken(data.token);
-            } catch (e) {
-                console.error(e);
-            }
-        })();
-    }, [roomName, username]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetch(
+          `/api/token?room=${roomName}&username=${username}`
+        );
+        const data = await resp.json();
+        setToken(data.token);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [roomName, username]);
 
-    if (token === "") {
-        return <div>Connecting to session...</div>;
-    }
-
+  if (!token) {
     return (
-        <LiveKitRoom
-            video={false}
-            audio={true}
-            token={token}
-            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-            data-lk-theme="default"
-            style={{ height: "100%" }}
-        >
-            <SessionContent
-                initialCode={initialCode}
-                code={code}
-                setCode={setCode}
-            />
-            <RoomAudioRenderer />
-        </LiveKitRoom>
+      <div className="w-full h-full flex items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
+        <span className="text-sm text-slate-500 font-medium">
+          Connecting to live session…
+        </span>
+      </div>
     );
+  }
+
+  const livekiturl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  if (!livekiturl) {
+    return (
+      <div>
+        <h1>Missing the LIVEKIT URL</h1>
+      </div>
+    );
+  }
+
+  return (
+    <LiveKitRoom
+      video={false}
+      audio={true}
+      token={token}
+      serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+      data-lk-theme="default"
+      className="w-full h-full"
+      style={{ width: "100%", height: "100%" }}
+    >
+      <SessionContent initialCode={initialCode} code={code} setCode={setCode} />
+      <RoomAudioRenderer />
+    </LiveKitRoom>
+  );
 }
 
 function SessionContent({
-    initialCode,
-    code,
-    setCode,
+  initialCode,
+  code,
+  setCode,
 }: {
-    initialCode: string;
-    code: string;
-    setCode: (code: string) => void;
+  initialCode: string;
+  code: string;
+  setCode: (code: string) => void;
 }) {
-    const { localParticipant } = useLocalParticipant();
-    const [lastSentCode, setLastSentCode] = useState(initialCode);
+  const { localParticipant } = useLocalParticipant();
+  const room = useRoomContext();
+  const [lastSentCode, setLastSentCode] = useState(initialCode);
 
-    // Debounce logic for sending code
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            if (code !== lastSentCode && localParticipant) {
-                const data = new TextEncoder().encode(
-                    JSON.stringify({ type: "code_update", code })
-                );
-                localParticipant.publishData(data, { reliable: true });
-                setLastSentCode(code);
-                console.log("Sent code update to room");
-            }
-        }, 2000); // 2 second debounce
+  // Debounce logic for sending code
+  useEffect(() => {
+    if (!localParticipant) return;
 
-        return () => clearTimeout(timeoutId);
-    }, [code, lastSentCode, localParticipant]);
+    const timeoutId = window.setTimeout(async () => {
+      if (code === lastSentCode) return;
 
-    return (
-        <div className="flex flex-col h-full gap-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-sm font-medium text-gray-700">Live Session Active</span>
-                </div>
-                <ControlBar variation="minimal" controls={{ microphone: true, camera: false, screenShare: false, chat: false }} />
-            </div>
+      try {
+        const data = new TextEncoder().encode(
+          JSON.stringify({ type: "code_update", code })
+        );
 
-            <CodeEditor
-                language="python"
-                initialCode={initialCode}
-                onCodeChange={setCode}
-            />
+        await localParticipant.publishData(data, {
+          reliable: true,
+        });
+
+        setLastSentCode(code);
+        console.log("Sent code update to room");
+      } catch (err) {
+        // LiveKit will throw here if the room/PC is already closed.
+        // We just log and ignore so it doesn't crash the UI.
+        console.warn("Failed to publish code update:", err);
+      }
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [code, lastSentCode, localParticipant]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between bg-white px-4 py-3 shadow-sm border border-slate-200">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-sm font-medium text-slate-700">
+            Live Session Active
+          </span>
         </div>
-    );
+
+        <ControlBar
+          variation="minimal"
+          controls={{
+            microphone: true,
+            camera: false,
+            screenShare: false,
+            chat: false,
+          }}
+          className="!bg-transparent !shadow-none !border-none !p-0 !gap-2"
+        />
+      </div>
+
+      <div className="flex-1">
+        <CodeEditor
+          language="python"
+          initialCode={initialCode}
+          onCodeChange={setCode}
+        />
+      </div>
+    </div>
+  );
 }
