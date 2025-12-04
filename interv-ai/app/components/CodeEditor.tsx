@@ -17,7 +17,7 @@ export default function CodeEditor({
   const [code, setCode] = useState(initialCode);
 
   return (
-    <div className="w-full max-w-3xl rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div className="w-full rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
         <span className="text-sm font-medium text-gray-700">
           Solution Editor
@@ -29,7 +29,7 @@ export default function CodeEditor({
 
       <Editor
         height="600px"
-        width="1500px"
+        width="100%"
         defaultLanguage={language}
         value={code}
         theme="vs-dark"
