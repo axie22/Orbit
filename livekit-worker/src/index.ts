@@ -164,19 +164,18 @@ async function main() {
             `Subscribed to audio track from ${participant.identity}, source=${publication.source}`
           );
 
-          // Create an AudioStream from the track at 16kHz mono
           const audioStream = new AudioStream(track, 16000, 1);
 
           // Start STT
           startGoogleStreamingStt(audioStream, {
             onPartial: (text) => {
-              // Optional: you can ignore partials for now
+              // Inore partials for now
               console.log(`[STT partial][${participant.identity}]:`, text);
             },
             onFinal: (text) => {
               console.log(`[STT final][${participant.identity}]:`, text);
-              // here is where we will call your LLM API next
-              // e.g. send { transcript: text, code: latestCode, room: room.name } to /api/chat
+              // here is where we will call LLM API but we need to think about when
+              // { transcript: text, code: latestCode, room: room.name } to /api/LLM
             },
             onError: (err) => {
               console.error("STT error:", err);
