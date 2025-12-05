@@ -1,0 +1,15 @@
+services:
+  web-app:
+    build: ./interv-ai
+    ports:
+      - "3000:3000"
+    env_file:
+      - .interv-ai/.env
+
+  livekit-worker:
+    build: ./livekit-worker
+    depends_on:
+      - web-app
+    environment:
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      WEBAPP_URL: http://localhost:3000

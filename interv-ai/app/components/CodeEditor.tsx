@@ -12,9 +12,14 @@ type CodeEditorProps = {
 export default function CodeEditor({
   initialCode = "# Write your solution here\n",
   language = "python",
-  onCodeChangeAction, //added prop for code change
 }: CodeEditorProps) {
   const [code, setCode] = useState(initialCode);
+
+  const handleEditorChange = (value: string | undefined) => {
+    const newCode = value ?? "";
+    setCode(newCode);
+    onCodeChange?.(newCode);
+  };
 
   return (
     <div className="w-full rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -33,12 +38,7 @@ export default function CodeEditor({
         defaultLanguage={language}
         value={code}
         theme="vs-dark"
-        onChange={
-          (value) => {
-            setCode(value ?? "");
-            onCodeChangeAction(value ?? ""); //added prop for code change
-          }
-        }
+        onChange={(value) => setCode(value ?? "")}
         options={{
           fontSize: 14,
           minimap: { enabled: false },
