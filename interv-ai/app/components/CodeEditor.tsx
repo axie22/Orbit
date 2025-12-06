@@ -6,13 +6,13 @@ import Editor from "@monaco-editor/react";
 type CodeEditorProps = {
   initialCode?: string;
   language?: string;
-  onCodeChangeAction: (code: string) => void; // Added line to handle code changes (exposes code value to LLM)
 };
 
 export default function CodeEditor({
   initialCode = "# Write your solution here\n",
   language = "python",
-}: CodeEditorProps) {
+  onCodeChange,
+}: CodeEditorProps & { onCodeChange?: (code: string) => void }) {
   const [code, setCode] = useState(initialCode);
 
   const handleEditorChange = (value: string | undefined) => {
@@ -38,7 +38,7 @@ export default function CodeEditor({
         defaultLanguage={language}
         value={code}
         theme="vs-dark"
-        onChange={(value) => setCode(value ?? "")}
+        onChange={handleEditorChange}
         options={{
           fontSize: 14,
           minimap: { enabled: false },
