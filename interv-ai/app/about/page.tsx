@@ -91,7 +91,9 @@ export default function About() {
                             <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
                                 <h3 className="text-lg font-semibold text-slate-900">Phoebe Huang</h3>
                                 <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                                    Phobi
+                                    Phoebe is a full-stack engineer with interests in AI systems, debeloper tools, and intuitive user experiences.
+                                    She focuses on building realiable software through the integration of thoughtful interfaces and intelligent systems to real-world applications. 
+                                    Her work emphasizes responsive design, performance optimization, and integrating AI technologies to enhance interactivity.
                                 </p>
                             </div>
 
