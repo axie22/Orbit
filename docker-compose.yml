@@ -12,7 +12,7 @@ services:
       - LIVEKIT_API_KEY=devkey
       - LIVEKIT_API_SECRET=secret
       - LIVEKIT_URL=http://livekit:7880
-      - NEXT_PUBLIC_LIVEKIT_URL=http://localhost:7880
+      - NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
       - NEXTAUTH_SECRET=secret
       - NEXTAUTH_URL=http://localhost:3000
     depends_on:
@@ -20,7 +20,11 @@ services:
 
   livekit:
     image: livekit/livekit-server:latest
-    command: --config /livekit.yaml --devel
+    command: --config /livekit.yaml
+    env_file:
+      - ./.env.livekit
+    environment:
+      - LIVEKIT_KEYS
     ports:
       - "7880:7880"
       - "7881:7881"
@@ -28,11 +32,10 @@ services:
     volumes:
       - ./livekit.yaml:/livekit.yaml
 
-
   worker:
     build: ./livekit-worker
     env_file:
-      - .env
+      - ./livekit-worker/.env
     environment:
       - LIVEKIT_URL=http://livekit:7880
       - LIVEKIT_API_KEY=devkey
@@ -40,7 +43,6 @@ services:
       - LIVEKIT_API_SECRET=secret
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-key.json
     volumes:
-      - ./google_creds.json:/app/gcp-key.json
+      - ./livekit-worker/keys/gcp-speech.json:/var/secrets/gcp-key.json:ro
     depends_on:
       - livekit
-
