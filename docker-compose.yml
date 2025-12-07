@@ -3,46 +3,19 @@ services:
     build:
       context: ./interv-ai
       args:
-        - NEXT_PUBLIC_LIVEKIT_URL=http://localhost:7880
+        - NEXT_PUBLIC_LIVEKIT_URL=wss://orbit-xbxv09ai.livekit.cloud
     ports:
       - "3000:3000"
     env_file:
-      - interv-ai/.env
-    environment:
-      - LIVEKIT_API_KEY=devkey
-      - LIVEKIT_API_SECRET=secret
-      - LIVEKIT_URL=http://livekit:7880
-      - NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
-      - NEXTAUTH_SECRET=secret
-      - NEXTAUTH_URL=http://localhost:3000
+      - ./interv-ai/.env
     depends_on:
-      - livekit
-
-  livekit:
-    image: livekit/livekit-server:latest
-    command: --config /livekit.yaml
-    env_file:
-      - ./.env.livekit
-    environment:
-      - LIVEKIT_KEYS
-    ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "50000-50020:50000-50020/udp"
-    volumes:
-      - ./livekit.yaml:/livekit.yaml
+      - worker
 
   worker:
     build: ./livekit-worker
     env_file:
       - ./livekit-worker/.env
     environment:
-      - LIVEKIT_URL=http://livekit:7880
-      - LIVEKIT_API_KEY=devkey
-      - LIVEKIT_API_SECRET=secret
-      - LIVEKIT_API_SECRET=secret
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-key.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/gcp-key.json
     volumes:
       - ./livekit-worker/keys/gcp-speech.json:/var/secrets/gcp-key.json:ro
-    depends_on:
-      - livekit
