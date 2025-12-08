@@ -25,16 +25,7 @@ RUN npm ci --omit=dev && apt-get update && apt-get install -y ca-certificates &&
 
 COPY --from=builder /app/dist ./dist
 
-# Google Cloud STT auth: expect this env var to be set at runtime.
-# You can mount the service account JSON into the container and point this to it.
-# Example:
-#   docker run -e GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/gcp-key.json
-# ENV GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/gcp-key.json
-
-# # LiveKit + app env vars
-# ENV LIVEKIT_URL=""
-# ENV LIVEKIT_API_KEY=""
-# ENV LIVEKIT_API_SECRET=""
+# LiveKit + app env vars
 ENV GCP_SPEECH_LANGUAGE="en-US"
 ENV WEBAPP_URL="http://host.docker.internal:3000"
 
