@@ -13,37 +13,127 @@ import {
   RemoteTrack,
 } from "@livekit/rtc-node";
 import { v1 } from "@google-cloud/speech";
+import express from "express";
+
+const app = express();
+app.use(express.json());
 
 const client = new v1.SpeechClient();
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-const ROOM_NAME = process.env.ROOM_NAME ?? "";
-const AGENT_IDENTITY = process.env.AGENT_IDENTITY ?? "orbit-agent";
+const AGENT_IDENTITY_PREFIX = process.env.AGENT_IDENTITY ?? "orbit-agent";
 
-let latestCode = "";
-
-if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !ROOM_NAME) {
+if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
   console.error(
-    "Missing LiveKit env vars. Check LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, ROOM_NAME."
+    "Missing LiveKit env vars. Check LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET."
   );
   process.exit(1);
 }
 
-async function createAgentToken(roomName: string, identity: string) {
-  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-    identity,
-    ttl: 60 * 60,
-  });
-  at.addGrant({
-    roomJoin: true,
-    room: roomName,
-    canPublish: true,
-    canSubscribe: true,
-  });
-  return at.toJwt();
+class RoomSession {
+  roomName: string;
+  identity: string;
+  room: Room;
+  latestCode: string = "";
+  sttStreams: Map<string, any> = new Map(); // Track STT streams by participant info
+
+  constructor(roomName: string) {
+    this.roomName = roomName;
+    this.identity = `${AGENT_IDENTITY_PREFIX}-${Math.random().toString(36).substring(7)}`;
+    this.room = new Room();
+  }
+
+  async start() {
+    const token = await this.createAgentToken(this.roomName, this.identity);
+
+    await this.room.connect(LIVEKIT_URL, token, {
+      autoSubscribe: true,
+      dynacast: true,
+    });
+    console.log(`[${this.roomName}] Connected as ${this.identity}`);
+
+    this.room
+      .on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
+        console.log(`[${this.roomName}] Participant connected:`, p.identity);
+      })
+      .on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
+        console.log(`[${this.roomName}] Participant disconnected:`, p.identity);
+      })
+      .on(RoomEvent.DataReceived, (payload, participant) => {
+        const from = participant?.identity ?? "unknown";
+        try {
+          const json = JSON.parse(new TextDecoder().decode(payload));
+          if (json.type === "code_update") {
+            this.latestCode = json.code;
+            console.log(`[${this.roomName}] Code update from ${from}`);
+          }
+        } catch (err) {
+          // ignore non-json
+        }
+      })
+      .on(
+        RoomEvent.TrackSubscribed,
+        (
+          track: RemoteTrack,
+          publication: RemoteTrackPublication,
+          participant: RemoteParticipant
+        ) => {
+          if (publication.kind === TrackKind.KIND_AUDIO) {
+            console.log(
+              `[${this.roomName}] Subscribed to audio from ${participant.identity}`
+            );
+            this.handleAudioTrack(track, participant);
+          }
+        }
+      )
+      .on(RoomEvent.Disconnected, () => {
+        console.log(`[${this.roomName}] Disconnected`);
+        this.cleanup();
+      });
+  }
+
+  async createAgentToken(roomName: string, identity: string) {
+    const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+      identity,
+      ttl: 60 * 60,
+    });
+    at.addGrant({
+      roomJoin: true,
+      room: roomName,
+      canPublish: true,
+      canSubscribe: true,
+    });
+    return at.toJwt();
+  }
+
+  handleAudioTrack(track: RemoteTrack, participant: RemoteParticipant) {
+    const audioStream = new AudioStream(track, 16000, 1);
+    const sttStream = startGoogleStreamingStt(audioStream, {
+      onFinal: (text) => {
+        console.log(`[STT final][${participant.identity}]:`, text);
+        // TODO: Call LLM API here with this.latestCode
+      },
+      onError: (err) => {
+        console.error(`[STT error][${participant.identity}]:`, err);
+      },
+    });
+    this.sttStreams.set(participant.identity, sttStream);
+  }
+
+  cleanup() {
+    this.sttStreams.forEach((stream) => stream.end());
+    this.sttStreams.clear();
+    // Room disconnect is handled by the event or caller
+  }
+
+  async stop() {
+    await this.room.disconnect();
+    this.cleanup();
+  }
 }
+
 
 type SttCallbacks = {
   onPartial?: (text: string) => void;
@@ -51,7 +141,7 @@ type SttCallbacks = {
   onError?: (err: Error) => void;
 };
 
-export function startGoogleStreamingStt(
+function startGoogleStreamingStt(
   audioStream: AudioStream,
   callbacks: SttCallbacks = {}
 ) {
@@ -82,14 +172,11 @@ export function startGoogleStreamingStt(
       const result = data.results?.[0];
       const alt = result?.alternatives?.[0];
       if (!alt) return;
-
       const text = alt.transcript as string;
-
       if (result.isFinal) {
         console.log("[STT final]:", text);
         callbacks.onFinal?.(text);
       } else {
-        console.log("[STT partial]:", text);
         callbacks.onPartial?.(text);
       }
     });
@@ -98,110 +185,66 @@ export function startGoogleStreamingStt(
     try {
       for await (const frame of audioStream as AsyncIterable<AudioFrame>) {
         if (!sttAlive) break;
-
         const buffer = Buffer.from(frame.data.buffer);
         try {
           recognizeStream.write(buffer);
         } catch (err) {
-          console.warn("Attempted write after stream closed:", err);
           break;
         }
       }
     } finally {
-      if (sttAlive) {
-        recognizeStream.end();
-      }
+      if (sttAlive) recognizeStream.end();
     }
   })();
 
   return recognizeStream;
 }
 
-async function main() {
-  const token = await createAgentToken(ROOM_NAME, AGENT_IDENTITY);
+// --- Server ---
 
-  const room = new Room();
-  await room.connect(LIVEKIT_URL, token, {
-    autoSubscribe: true,
-    dynacast: true,
-  });
-  console.log("Connected to room:", room.name);
+const sessions = new Map<string, RoomSession>();
 
-  room
-    .on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
-      console.log("Participant connected:", p.identity);
-    })
-    .on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
-      console.log("Participant disconnected:", p.identity);
-    })
-    .on(RoomEvent.DataReceived, (payload, participant) => {
-      const from = participant?.identity ?? "unknown";
-      try {
-        const json = JSON.parse(new TextDecoder().decode(payload));
-        console.log("Data from", from, json);
-        if (json.type === "code_update") {
-          console.log(
-            ">> Code update snippet:",
-            (json.code as string).slice(0, 120),
-            "…"
-          );
-          latestCode = json.code;
-        }
-      } catch (err) {
-        console.warn("Failed to parse data from", from, err);
-      }
-    })
-    .on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
-      const ids = speakers.map((s) => s.identity).join(", ");
-      console.log("Active speakers:", ids || "(none)");
-    })
-    .on(
-      RoomEvent.TrackSubscribed,
-      (
-        track: RemoteTrack,
-        publication: RemoteTrackPublication,
-        participant: RemoteParticipant
-      ) => {
-        if (publication.kind === TrackKind.KIND_AUDIO) {
-          console.log(
-            `Subscribed to audio track from ${participant.identity}, source=${publication.source}`
-          );
+app.post("/join", async (req, res) => {
+  const { roomName } = req.body;
+  if (!roomName) {
+    res.status(400).json({ error: "Missing roomName" });
+    return;
+  }
 
-          const audioStream = new AudioStream(track, 16000, 1);
+  if (sessions.has(roomName)) {
+    console.log(`Already in room ${roomName}`);
+    res.json({ message: "Already joined", roomName });
+    return;
+  }
 
-          // Start STT
-          startGoogleStreamingStt(audioStream, {
-            onPartial: (text) => {
-              // Inore partials for now
-              console.log(`[STT partial][${participant.identity}]:`, text);
-            },
-            onFinal: (text) => {
-              console.log(`[STT final][${participant.identity}]:`, text);
-              // here is where we will call LLM API but we need to think about when
-              // { transcript: text, code: latestCode, room: room.name } to /api/LLM
-            },
-            onError: (err) => {
-              console.error("STT error:", err);
-            },
-          });
-        }
-      }
-    )
-    .on(RoomEvent.Disconnected, async () => {
-      console.log("Disconnected from room, cleaning up");
-      await dispose();
-      process.exit(0);
+  try {
+    const session = new RoomSession(roomName);
+    await session.start();
+    sessions.set(roomName, session);
+
+    // Auto-cleanup if room disconnects
+    session.room.on(RoomEvent.Disconnected, () => {
+      sessions.delete(roomName);
     });
 
-  process.on("SIGINT", async () => {
-    console.log("SIGINT received, disconnecting");
-    await room.disconnect();
-    await dispose();
-    process.exit(0);
-  });
-}
+    res.json({ message: "Joined room", roomName, identity: session.identity });
+  } catch (err: any) {
+    console.error("Failed to join room:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-main().catch((err) => {
-  console.error("Worker error:", err);
-  process.exit(1);
+const PORT = 8080;
+app.listen(PORT, () => {
+  console.log(`Worker service listening on port ${PORT}`);
+});
+
+// Cleanup on exit
+process.on("SIGINT", async () => {
+  console.log("Shutting down...");
+  for (const session of sessions.values()) {
+    await session.stop();
+  }
+  await dispose();
+  process.exit(0);
 });
