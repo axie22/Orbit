@@ -1,15 +1,21 @@
 services:
   web-app:
-    build: ./interv-ai
+    build:
+      context: ./interv-ai
+      args:
+        - NEXT_PUBLIC_LIVEKIT_URL=wss://orbit-xbxv09ai.livekit.cloud
     ports:
       - "3000:3000"
     env_file:
-      - .interv-ai/.env
-
-  livekit-worker:
-    build: ./livekit-worker
+      - ./interv-ai/.env
     depends_on:
-      - web-app
+      - worker
+
+  worker:
+    build: ./livekit-worker
+    env_file:
+      - ./livekit-worker/.env
     environment:
-      LIVEKIT_URL: ${LIVEKIT_URL}
-      WEBAPP_URL: http://localhost:3000
+      - GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/gcp-key.json
+    volumes:
+      - ./livekit-worker/keys/gcp-speech.json:/var/secrets/gcp-key.json:ro
