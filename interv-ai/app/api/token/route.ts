@@ -36,7 +36,6 @@ export async function GET(req: NextRequest) {
 
   // Notify the worker to join this room
   try {
-    // In Docker, 'worker' is the hostname of the service
     await fetch("http://worker:8080/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("Failed to notify worker:", err);
-    // Don't fail the user request just because worker didn't start? 
+    // Don't fail the user request just because worker didn't start?
     // Or maybe we should log it but return token.
   }
 
