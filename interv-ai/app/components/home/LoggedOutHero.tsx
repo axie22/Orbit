@@ -34,18 +34,6 @@ export default function LoggedOutHero() {
         >
           Learn more
         </Button>
-
-        {/* --- NEW DEMO BUTTON (Cheng Test Edition) --- */}
-        <Button
-          as={Link}
-          href="/practiceAIDemo?id=two-sum"
-          radius="sm"
-          className="px-6 py-3 bg-emerald-600 text-white hover:bg-emerald-700 font-medium shadow-sm"
-        >
-          Try AI Demo
-        </Button>
-        {/* --- NEW DEMO BUTTON (Cheng Test Edition)--- */}
-
       </div>
     </section>
   );
