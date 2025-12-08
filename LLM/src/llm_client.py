@@ -1,12 +1,23 @@
 ### """ File for calling google gemini Fine Tuned LLM to generate interview responses """###
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure the API
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# --- CONFIGURATION ---
+PROJECT_ID = "618518132754"
+LOCATION = "us-central1"
+# The Endpoint ID you provided
+ENDPOINT_ID = "projects/618518132754/locations/us-central1/endpoints/5275745961627353088"
+
+# Initialize Client (Uses your service_account.json automatically via ADC)
+client = genai.Client(
+    vertexai=True,
+    project=PROJECT_ID,
+    location=LOCATION
+)
 
 def generate_response(chat_history, current_user_code, problem_context):
     """
@@ -14,10 +25,15 @@ def generate_response(chat_history, current_user_code, problem_context):
     current_user_code: The Python code currently in the editor
     problem_context: The dict returned from problem_retriever.py
     """
-    
+    # --- 1. RAG CONTEXT SETUP ---
+    rag_transcript = problem_context.get('transcript', '')[:10000]
+    rag_solution = problem_context.get('solution_code', 'No solution provided.')
+    title = problem_context.get('title', 'Unknown Problem')
+    description = problem_context.get('description', 'No description.')
+
     # 1. Build the System Prompt (The Persona)
     # This instructs Gemini on how to behave.
-    system_instruction = f"""
+    system_text = f"""
     You are an expert Senior Staff Software Engineer conducting a mock technical interview.
     The user is solving the problem: "{problem_context['title']}".
     
@@ -43,20 +59,50 @@ def generate_response(chat_history, current_user_code, problem_context):
     5. If the user is completely stuck, use one of the "INTERVIEWER HINTS" provided above.
     """
 
-    # 2. Initialize the Model
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash", 
-        system_instruction=system_instruction
-    )
+    # 2. FORMAT HISTORY
+    # Map our history format to the new google.genai.types.Content format
+    contents = []
+    for msg in chat_history:
+        role = "user" if msg['role'] == "user" else "model"
+        text = msg['parts'][0]['text']
+        if not text.strip(): continue # Skip empty
+        
+        contents.append(types.Content(
+            role=role,
+            parts=[types.Part.from_text(text=text)]
+        ))
 
-    # 3. Format History for Gemini
-    # Gemini expects logic to be strict about user/model turns. 
-    # We assume 'chat_history' comes in clean from the frontend.
-    
+    # 3. GENERATE
     try:
-        # We use generate_content with the full history list
-        # This is stateless; we send the whole conversation every time.
-        response = model.generate_content(chat_history)
+        response = client.models.generate_content(
+            model=ENDPOINT_ID,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                temperature=0.7, # Lowered slightly for more stable hints
+                max_output_tokens=1024,
+                system_instruction=system_text, # Inject System Prompt here
+                safety_settings=[
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_HATE_SPEECH",
+                        threshold="OFF"
+                    ),
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold="OFF"
+                    ),
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold="OFF"
+                    ),
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_HARASSMENT",
+                        threshold="OFF"
+                    )
+                ]
+            )
+        )
         return response.text
+
     except Exception as e:
+        print(f" GenAI Error: {e}")
         return f"I'm having trouble thinking right now. (Error: {str(e)})"

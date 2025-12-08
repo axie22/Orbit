@@ -10,3 +10,4 @@ uvicorn
 boto3
 google-generativeai
 pydantic
+google-cloud-aiplatform
