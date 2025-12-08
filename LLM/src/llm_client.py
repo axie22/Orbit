@@ -104,5 +104,5 @@ def generate_response(chat_history, current_user_code, problem_context):
         return response.text
 
     except Exception as e:
-        print(f" GenAI Error: {e}")
+        print(f"GenAI Error: {e}")
         return f"I'm having trouble thinking right now. (Error: {str(e)})"
