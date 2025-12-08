@@ -32,7 +32,10 @@ if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !ROOM_NAME) {
 }
 
 async function createAgentToken(roomName: string, identity: string) {
-  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, { identity });
+  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+    identity,
+    ttl: 60 * 60,
+  });
   at.addGrant({
     roomJoin: true,
     room: roomName,
@@ -98,7 +101,7 @@ export function startGoogleStreamingStt(
 
         const buffer = Buffer.from(frame.data.buffer);
         try {
-          recognizeStream.write(buffer); // 🔊 audio bytes only
+          recognizeStream.write(buffer);
         } catch (err) {
           console.warn("Attempted write after stream closed:", err);
           break;
