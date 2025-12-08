@@ -8,3 +8,5 @@ LLM/data/*
 video_pipeline/pipelines/transcripts_dl/*
 LLM/src/__pycache__
 LLM/leetcode_solutions.parquet
+
+.env.livekit

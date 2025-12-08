@@ -32,5 +32,20 @@ export async function GET(req: NextRequest) {
 
   at.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true });
 
-  return NextResponse.json({ token: await at.toJwt() });
+  const token = await at.toJwt();
+
+  // Notify the worker to join this room
+  try {
+    await fetch("http://worker:8080/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomName: room }),
+    });
+  } catch (err) {
+    console.error("Failed to notify worker:", err);
+    // Don't fail the user request just because worker didn't start?
+    // Or maybe we should log it but return token.
+  }
+
+  return NextResponse.json({ token });
 }
