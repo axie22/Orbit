@@ -4,3 +4,5 @@ work/
 .DS_Store
 *transformed.json
 *downloaded_data.json
+
+.env.livekit
