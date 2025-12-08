@@ -4,5 +4,9 @@ work/
 .DS_Store
 *transformed.json
 *downloaded_data.json
+LLM/data/*
+video_pipeline/pipelines/transcripts_dl/*
+LLM/src/__pycache__
+LLM/leetcode_solutions.parquet
 
 .env.livekit

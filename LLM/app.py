@@ -1,160 +1,71 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Dict, Any
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
-from langchain_community.document_loaders import TextLoader
-from langchain_community.vectorstores import FAISS
-from langchain.embeddings import SentenceTransformerEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import HumanMessage, SystemMessage
-import requests
-import json
+# import custom modules
+from src.problem_retriever import get_problem_context
+from src.llm_client import generate_response
 
-####################################################
-# 1. EMBEDDINGS + INDEXING
-####################################################
+class ChatRequest(BaseModel):
+    problemId: str
+    code: str
+    history: list
 
-def build_or_load_faiss_index(data_dir="data", index_path="index.faiss"):
-    embedder = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+app = FastAPI()
 
-    if os.path.exists(index_path):
-        print("🔹 Loading existing FAISS index...")
-        return FAISS.load_local(index_path, embedder, allow_dangerous_deserialization=True)
+# --- CORS SETUP ---
+# allows Next.js frontend (running on localhost:3000) to talk to this backend.
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
-    print("🔹 Building new FAISS index...")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    docs = []
-    for f in os.listdir(data_dir):
-        if f.endswith(".txt"):
-            loader = TextLoader(os.path.join(data_dir, f))
-            docs.extend(loader.load())
+# --- DATA MODELS ---
+# This defines what data the Frontend sends us.
+class ChatRequest(BaseModel):
+    problemId: str
+    code: str
+    history: List[Dict[str, Any]] # e.g. [{"role": "user", "parts": [{"text": "Hi"}]}]
 
-    # Chunk transcripts + OCR text
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(docs)
+# --- API ENDPOINTS ---
 
-    # Build index
-    db = FAISS.from_documents(chunks, embedder)
-    db.save_local(index_path)
+@app.get("/")
+def health_check():
+    return {"status": "Interviewer AI is online"}
 
-    print("✅ FAISS index built and saved.")
-    return db
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    Receives chat history and code, fetches problem context, 
+    and returns the AI interviewer's response.
+    """
+    
+    # 1. Get the Problem Data from DynamoDB
+    problem_context = get_problem_context(request.problemId)
+    
+    if not problem_context:
+        raise HTTPException(status_code=404, detail=f"Problem {request.problemId} not found in database.")
 
+    # 2. Call Gemini
+    # We pass the history, the code, and the problem details
+    ai_reply = generate_response(
+        chat_history=request.history, 
+        current_user_code=request.code, 
+        problem_context=problem_context
+    )
 
-####################################################
-# 2. GROQ LLAMA CLIENT
-####################################################
+    return {"reply": ai_reply}
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL = "llama3-70b-8192"
-
-def llama(messages, temperature=0):
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": MODEL,
-        "messages": messages,
-        "temperature": temperature
-    }
-
-    r = requests.post(GROQ_URL, headers=headers, data=json.dumps(payload))
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
-
-
-####################################################
-# 3. QUESTION GENERATION WITH RAG
-####################################################
-
-def generate_coding_question(db, topic_query="dynamic programming"):
-    # Retrieve relevant context
-    docs = db.similarity_search(topic_query, k=4)
-    context = "\n\n".join([d.page_content for d in docs])
-
-    system_prompt = """
-You are an expert technical interviewer. 
-Using the provided context from real interview transcripts, generate ONE coding interview question.
-Return strictly JSON with:
-{
-  "title": "...",
-  "prompt": "...",
-  "constraints": "...",
-  "expected_solution_outline": ["...", "..."],
-  "sample_tests": [{"input": "...", "output": "..."}]
-}
-"""
-
-    user_prompt = f"Context:\n{context}\n\nGenerate question now."
-
-    response = llama([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_prompt)
-    ], temperature=0)
-
-    print("\n=== GENERATED QUESTION ===")
-    print(response)
-    return response
-
-
-####################################################
-# 4. ANSWER EVALUATION
-####################################################
-
-def evaluate_answer(question_json, user_answer):
-    system_prompt = """
-You are an automated interview grader.
-Score the candidate on 5 categories from 1-4:
-
-- Problem Understanding
-- Approach / Algorithm
-- Implementation Correctness
-- Testing & Edge Cases
-- Communication
-
-Return STRICT JSON:
-
-{
- "Problem Understanding": {"score": X, "evidence": "...", "suggestion": "..."},
- ...
- "overall_score": X
-}
-"""
-
-    user_prompt = f"""
-Question:
-{question_json}
-
-Candidate Answer:
-{user_answer}
-"""
-
-    response = llama([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_prompt)
-    ], temperature=0)
-
-    print("\n=== EVALUATION ===")
-    print(response)
-    return response
-
-
-####################################################
-# 5. MAIN WORKFLOW (MVP)
-####################################################
-
+# --- RUN SERVER ---
 if __name__ == "__main__":
-    db = build_or_load_faiss_index()
-
-    # Step 1 — generate question
-    q = generate_coding_question(db, topic_query="binary search trees")
-
-    # Step 2 — simulate user answer
-    user_answer = """
-I would use inorder traversal to get sorted array and then pick middle recursively...
-"""
-
-    evaluate_answer(q, user_answer)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

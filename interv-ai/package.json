@@ -16,7 +16,7 @@
     "@heroui/react": "^2.8.5",
     "@heroui/system": "^2.4.23",
     "@heroui/theme": "^2.4.23",
-    "@livekit/components-react": "^2.9.16",
+    "@livekit/components-react": "^2.9.17",
     "@livekit/components-styles": "^1.2.0",
     "@monaco-editor/react": "^4.7.0",
     "aws-sdk": "^2.1692.0",

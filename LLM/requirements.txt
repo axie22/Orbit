@@ -1,8 +1,13 @@
 groq
 sentence-transformers
-faiss-cpu
 pandas
 python-dotenv
 tqdm
 scikit-learn 
 numpy
+fastapi
+uvicorn
+boto3
+google-generativeai
+pydantic
+google-cloud-aiplatform
