@@ -11,14 +11,20 @@ import {
   AudioStream,
   AudioFrame,
   RemoteTrack,
+  AudioSource,
+  LocalAudioTrack,
+  TrackSource,
+  TrackPublishOptions,
 } from "@livekit/rtc-node";
 import { v1 } from "@google-cloud/speech";
+import { v1 as ttsV1 } from "@google-cloud/text-to-speech";
 import express from "express";
 
 const app = express();
 app.use(express.json());
 
 const client = new v1.SpeechClient();
+const ttsClient = new ttsV1.TextToSpeechClient();
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
@@ -32,12 +38,104 @@ if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
   process.exit(1);
 }
 
+// --- TTS Functions ---
+async function synthesizeSpeech(text: string): Promise<Buffer> {
+  try {
+    const [response] = await ttsClient.synthesizeSpeech({
+      input: { text },
+      voice: {
+        languageCode: "en-US",
+        name: "en-US-Neural2-J", // Male voice
+        ssmlGender: "MALE" as const,
+      },
+      audioConfig: {
+        audioEncoding: "LINEAR16" as const,
+        sampleRateHertz: 16000,
+      },
+    });
+
+    if (!response.audioContent) {
+      throw new Error("No audio content in TTS response");
+    }
+
+    console.log(`[TTS] Synthesized ${text.length} characters`);
+    return Buffer.from(response.audioContent as Uint8Array);
+  } catch (err) {
+    console.error("[TTS] Synthesis error:", err);
+    throw err;
+  }
+}
+
+async function playAudioInRoom(
+  audioBuffer: Buffer,
+  session: RoomSession
+): Promise<void> {
+  try {
+    if (!session.audioSource) {
+      session.audioSource = new AudioSource(16000, 1);
+    }
+
+    if (!session.audioTrack) {
+      session.audioTrack = LocalAudioTrack.createAudioTrack(
+        "ai-voice",
+        session.audioSource
+      );
+      await session.room.localParticipant!.publishTrack(
+        session.audioTrack,
+        new TrackPublishOptions({})
+      );
+      console.log(`[${session.roomName}] Published AI audio track`);
+    }
+
+    // Convert Buffer to Int16Array
+    const int16Array = new Int16Array(
+      audioBuffer.buffer,
+      audioBuffer.byteOffset,
+      audioBuffer.length / 2
+    );
+
+    // Feed audio in chunks to avoid buffer overflow
+    const FRAME_SIZE = 480; // 30ms at 16kHz
+    const numFrames = Math.ceil(int16Array.length / FRAME_SIZE);
+
+    console.log(
+      `[TTS] Playing ${int16Array.length} samples (${numFrames} frames)`
+    );
+
+    for (let i = 0; i < numFrames; i++) {
+      const start = i * FRAME_SIZE;
+      const end = Math.min(start + FRAME_SIZE, int16Array.length);
+      const frameData = int16Array.slice(start, end);
+
+      // Create AudioFrame
+      const audioFrame = new AudioFrame(
+        frameData,
+        16000,
+        1,
+        frameData.length
+      );
+
+      await session.audioSource.captureFrame(audioFrame);
+
+      // Small delay to match real-time playback (30ms per frame)
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    }
+
+    console.log(`[TTS] Finished playing audio`);
+  } catch (err) {
+    console.error("[TTS] Playback error:", err);
+    throw err;
+  }
+}
+
 class RoomSession {
   roomName: string;
   identity: string;
   room: Room;
   latestCode: string = "";
-  sttStreams: Map<string, any> = new Map(); // Track STT streams by participant info
+  sttStreams: Map<string, any> = new Map();
+  audioSource: AudioSource | null = null;
+  audioTrack: LocalAudioTrack | null = null;
 
   constructor(roomName: string) {
     this.roomName = roomName;
@@ -111,9 +209,23 @@ class RoomSession {
   handleAudioTrack(track: RemoteTrack, participant: RemoteParticipant) {
     const audioStream = new AudioStream(track, 16000, 1);
     const sttStream = startGoogleStreamingStt(audioStream, {
-      onFinal: (text) => {
+      onFinal: async (text) => {
         console.log(`[STT final][${participant.identity}]:`, text);
-        // TODO: Call LLM API here with this.latestCode
+
+        try {
+          // TEMPORARY: Hardcoded response for testing TTS
+          // const response = await fetch("http://web-app:3000/api/llm-chat", { ... });
+
+          console.log(`[LLM Proxy] Skipped fetch for testing.`);
+          const aiReply = "This is a hardcoded response. I am effectively speaking back to you to test the audio synthesis system.";
+          console.log(`[LLM Response]:`, aiReply);
+
+          // Synthesize and play audio
+          const audioBuffer = await synthesizeSpeech(aiReply);
+          await playAudioInRoom(audioBuffer, this);
+        } catch (err) {
+          console.error(`[LLM/TTS Error]:`, err);
+        }
       },
       onError: (err) => {
         console.error(`[STT error][${participant.identity}]:`, err);
