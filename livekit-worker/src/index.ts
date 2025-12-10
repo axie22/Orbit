@@ -21,8 +21,8 @@ import { v1 as ttsV1 } from "@google-cloud/text-to-speech";
 import express from "express";
 
 // two added imports for LLM integration
-import { getProblemContext } from "./db"; // <--- NEW
-import { generateAiResponse } from "./llm"; // <--- NEW
+import { getProblemContext } from "./db";
+import { generateAiResponse } from "./llm";
 
 const app = express();
 app.use(express.json());
