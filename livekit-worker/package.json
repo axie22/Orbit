@@ -20,6 +20,7 @@
     "@livekit/rtc-node": "^0.13.21",
     "@types/express": "^5.0.6",
     "dotenv": "^17.2.3",
+    "elevenlabs": "^1.59.0",
     "express": "^5.2.1",
     "livekit-client": "^2.16.0",
     "livekit-server-sdk": "^2.14.2",
