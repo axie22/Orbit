@@ -74,28 +74,32 @@ A GPT-4-based AI interviewer that conducts candidate interviews and provides fee
 ## Methodology
 
 ### System Architecture
-Our proposed system consists of the following core components:
+Our system consists of the following core components:
 
-1. **Question Generation Module**  
-   Uses prompt-engineered or fine-tuned LLMs to generate role-specific technical questions based on user-provided context.
+1. **Fine-Tuned LLM Interviewer**  
+   Custom **Gemini 2.0 Flash** model fine-tuned on synthetic interview dialogues. Uses Socratic questioning to guide candidates without giving direct answers.
 
-2. **Knowledge Extraction Pipeline**  
-   Automatically extracts technical interview data from YouTube coding tutorials using:
-   - Whisper for transcription.  
-   - PyTesseract/EasyOCR for code extraction.  
-   - OpenAI API + LangChain for context processing.
+2. **Retrieval-Augmented Generation (RAG)**  
+   - **DynamoDB**: Stores 1800+ LeetCode problems with solutions and video tutorial transcripts  
+   - **Context Injection**: Problem descriptions, hidden solution code, and transcript-derived hints injected into system prompts  
+   - Real-time retrieval during interviews to ground responses in factual content
 
-3. **Response Evaluation Module**  
-   Scores user answers for correctness, clarity, and reasoning using semantic similarity and rubric-based evaluation prompts.
+3. **Real-Time Voice System**  
+   - **LiveKit**: WebRTC infrastructure for low-latency audio streaming  
+   - **Google Cloud STT**: Streaming speech-to-text with automatic punctuation  
+   - **Google Cloud TTS**: Neural voice synthesis (en-US-Neural2-J)  
+   - Round-trip latency: ~3-4 seconds from speech to AI response
 
-4. **Feedback & Coaching Module**  
-   Provides structured feedback and improvement suggestions while adapting tone and difficulty based on prior performance.
+4. **Interactive Coding Workspace**  
+   - **Monaco Editor**: VS Code-powered code editor with Python syntax highlighting  
+   - **Live Code Sync**: User code streamed to AI interviewer via LiveKit data channel  
+   - Context-aware feedback based on current code state
 
-5. **Session Memory & Personalization Layer**  
-   Maintains a record of user interactions to tailor future questions and feedback dynamically.
-
-6. **Interface Layer**  
-   A Flask-based web interface for conducting and visualizing mock interviews, feedback, and analytics.
+5. **Full-Stack Web Application**  
+   - **Frontend**: Next.js with React, Tailwind CSS, LiveKit components  
+   - **Backend**: FastAPI service with endpoint for LLM generation  
+   - **Worker**: Node.js LiveKit worker orchestrating STT/TTS pipeline  
+   - **Deployment**: Docker Compose for multi-service orchestration
 
 ---
 
@@ -103,12 +107,14 @@ Our proposed system consists of the following core components:
 
 | Category | Tools / Libraries |
 |-----------|------------------|
-| Data Processing | Python, Pandas, Jupyter |
-| LLM & Retrieval | Transformers, LangChain, OpenAI API |
-| Speech & OCR | Whisper API, PyTesseract, EasyOCR |
-| Video Handling | OpenCV, Pytube |
-| Backend & UI | Flask, HTML, CSS, JavaScript |
-| Version Control | Git, GitHub |
+| **LLM & AI** | Google Gemini 2.0 Flash (fine-tuned), Vertex AI |
+| **Backend** | FastAPI, Node.js, Express |
+| **Frontend** | Next.js 14, React, Tailwind CSS, Monaco Editor |
+| **Database** | DynamoDB (AWS) |
+| **Real-Time Audio** | LiveKit, Google Cloud STT/TTS |
+| **Data Processing** | Python, Pandas, YouTube Transcripts API |
+| **Deployment** | Docker, Docker Compose |
+| **Version Control** | Git, GitHub |
 
 ---
 
@@ -147,14 +153,19 @@ See [Video_Processing.md](./Documents/Video_Processing.md) for more info.
 
 **Pipeline:**
 
-1. **Video Selection:** Filter by topic diversity, code clarity, and English language.  
-2. **Frame Extraction:** Capture key frames using OpenCV scene detection.  
-3. **Transcription:** Convert audio to text using Whisper or YouTube captions.  
-4. **Text-Image Synchronization:** Pair transcripts with code screenshots.  
-5. **Data Cleaning:** Normalize indentation, remove duplicates, and label by topic/difficulty.
+1. **Transcript Extraction**: YouTube auto-generated captions via YouTube Transcripts API  
+2. **Problem Mapping**: Match videos to LeetCode problem IDs via title parsing  
+3. **Data Aggregation**: Merge transcripts with LeetCode problem metadata and solution code  
+4. **Synthetic Dialogue Generation**: Use Gemini 2.0 Flash to convert monologue transcripts into realistic interviewer-candidate conversations
+
+**Dataset Stats:**
+- **480+ videos** from channels like NeetCode, TechLead  
+- **6.7MB CSV** with problem transcripts  
+- **1825 unique problems** mapped (60-70% transcript coverage)  
+- **220+ training dialogues** generated for fine-tuning
 
 **Purpose:**  
-Forms a multimodal dataset (text + visuals) for enhanced LLM training and grounding. Enables reasoning about both code and explanation quality.
+Provides real-world pedagogical content for RAG. Transcript hints guide the AI interviewer on how to explain concepts effectively, mirroring high-quality YouTube tutorials.
 
 ---
 
@@ -188,48 +199,93 @@ Forms a multimodal dataset (text + visuals) for enhanced LLM training and ground
 
 ## Directory Layout
 
-``` bash
-video-pipeline/
-├─ config/
-│  ├─ channels.yml               # seed channels/playlists/video_ids
-│  ├─ constants.yml              # formats, thresholds, processing_version
-│  └─ .env.example               # YT API key, paths
-├─ pipelines/
-│  ├─ discover.py                # builds/updates manifest.csv from seeds
-│  ├─ ingest.py                  # downloads media + captions; extracts audio
-│  ├─ plan_segments.py             # (Stage 2.1) transcript→candidate segments
-│  ├─ materialize_segments.py      # (Stage 2.2) yt-dlp clips + ffmpeg frames
-│  ├─ detect_code_frames.py        # (Stage 2.3) UI classifier + OCR + scoring
-│  └─ index_frames.py              # (Stage 2.4) link frames↔utterances, write DDB
-├─ services/                       # reusable, side-effecting helpers (S3, DDB, yt, ffmpeg…)
-│  ├─ s3io.py
-│  ├─ ddb.py
-│  ├─ yt.py                        # yt-dlp client selection, segment download
-│  ├─ media.py                     # ffmpeg extract_audio, extract_frames
-│  └─ captions.py                  # pick_best_caption, parse_vtt, whisperx wrappers
-├─ manifests/
-│  ├─ manifest.csv               # canonical list of videos to process
-│  └─ rejected.csv               # videos rejected at discover
-├─ data/
-│  ├─ raw/                       # immutable artifacts (as-downloaded)
-│  │  └─ yt/{video_id}/
-│  │     ├─ metadata.json
-│  │     ├─ captions.en.vtt      # zero or more caption files
-│  │     ├─ captions.auto.en.vtt
-│  │     └─ source.sha256
-│  └─ derived/                   # pipeline outputs (audio, aligned captions, OCR frames)
-│     └─ yt/{video_id}/
-│        ├─ audio.wav            # For ASR/alignment
-│        └─ captions.norm.en.vtt # normalized caption track (merged/fixed)
-├─ logs/
-│  ├─ discover.log
-│  └─ ingest.log
-├─ scripts/
-│  └─ make_audio.sh              # ffmpeg wrapper
-├─ .gitignore
-└─ README.md
-
+```bash
+TechnicalInterviewLLM/
+├── LLM/                              # FastAPI backend service
+│   ├── app.py                        # Main API server (/chat endpoint)
+│   ├── src/
+│   │   ├── llm_client.py             # Vertex AI Gemini client
+│   │   └── problem_retriever.py      # DynamoDB retrieval
+│   ├── scripts/
+│   │   ├── populate_db.py            # Upload problems to DynamoDB
+│   │   ├── generate_finetune_data.py # Create synthetic training dialogues
+│   │   └── *.jsonl                   # Training data for fine-tuning
+│   └── requirements.txt
+│
+├── livekit-worker/                   # Node.js worker for voice system
+│   ├── src/
+│   │   └── index.ts                  # STT/TTS orchestration, session management
+│   ├── package.json
+│   └── dockerfile
+│
+├── interv-ai/                        # Next.js web application
+│   ├── app/
+│   │   ├── practice/[id]/            # Interview session page
+│   │   ├── components/
+│   │   │   ├── CodeEditor.tsx        # Monaco Editor integration
+│   │   │   └── VoiceRecorder.tsx     # Audio controls
+│   │   └── api/
+│   │       └── token/                # LiveKit JWT generation
+│   ├── public/
+│   └── package.json
+│
+├── transcripts/
+│   └── video_problem_transcripts.csv # 6.7MB dataset (150+ videos)
+│
+├── video_pipeline/                   # Data collection scripts
+│   ├── pipelines/
+│   │   ├── generate_transcripts.py   # Extract YouTube captions
+│   │   └── transcript_csv.py         # Convert to CSV format
+│   └── config/
+│
+├── docker-compose.yml                # Multi-service orchestration
+└── README.md
 ```
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Python 3.9+
+- Node.js 18+
+- Docker & Docker Compose
+- AWS account (DynamoDB)
+- Google Cloud account (STT/TTS, Vertex AI)
+- LiveKit server (or LiveKit Cloud)
+
+### Running Locally
+
+1. **Set up environment variables:**
+   ```bash
+   # LLM/.env
+   AWS_REGION=us-east-2
+   DYNAMODB_TABLE_NAME=Orbit_Interview_Questions
+   GOOGLE_APPLICATION_CREDENTIALS=./service_account.json
+   
+   # livekit-worker/.env
+   LIVEKIT_URL=ws://localhost:7880
+   LIVEKIT_API_KEY=your_key
+   LIVEKIT_API_SECRET=your_secret
+   GOOGLE_APPLICATION_CREDENTIALS=./keys/service_account.json
+   
+   # interv-ai/.env
+   NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
+   LIVEKIT_API_KEY=your_key
+   LIVEKIT_API_SECRET=your_secret
+   ```
+
+2. **Start all services:**
+   ```bash
+   docker-compose up
+   ```
+
+3. **Access the app:**
+   - Frontend: http://localhost:3000
+   - LLM API: http://localhost:8000
+   - LiveKit Worker: http://localhost:8080
+
+
 
 ---
 
