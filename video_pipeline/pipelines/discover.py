@@ -69,7 +69,7 @@ def get_videos_from_playlist(playlist_id):
 
     return videos
 
-# write to manifest.csv 
+# write to manifest.csv, video_id, title
 def write_manifest(entries):
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(MANIFEST_PATH, "w", newline="") as f:

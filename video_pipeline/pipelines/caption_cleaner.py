@@ -51,7 +51,7 @@ def clean_vtt(vtt_path: str) -> str:
 
     return " ".join(cleaned).strip()
 
-
+# find caption files to clean
 def process_caption(video_id: str) -> str:
     work_dir = Path("work") / video_id
     vtt_file = work_dir / "captions.norm.en.vtt"
