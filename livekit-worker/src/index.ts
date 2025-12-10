@@ -286,63 +286,116 @@ type SttCallbacks = {
   onError?: (err: Error) => void;
 };
 
+
+//replaced googlestreaming to bypass 5 min limit
 function startGoogleStreamingStt(
   audioStream: AudioStream,
   callbacks: SttCallbacks = {}
 ) {
-  const request = {
+  let recognizeStream: any = null;
+  let sttAlive = true;
+  let restartTimeout: NodeJS.Timeout | null = null;
+
+  // STT config
+  const requestConfig = {
     config: {
       encoding: "LINEAR16" as const,
       sampleRateHertz: 16000,
       languageCode: process.env.GCP_SPEECH_LANGUAGE || "en-US",
       enableAutomaticPunctuation: true,
+      model: "latest_long", //optimize for long-form audio
     },
     interimResults: true,
   };
 
-  let sttAlive = true;
+  // restart stream every 4 mins or so to extend interviewing time
+  const startStream = () => {
+    if (!sttAlive) return;
 
-  const recognizeStream = client
-    .streamingRecognize(request)
-    .on("error", (err: Error) => {
-      console.error("STT error:", err);
-      sttAlive = false;
-      callbacks.onError?.(err);
-    })
-    .on("end", () => {
-      console.log("Google STT stream ended");
-      sttAlive = false;
-    })
-    .on("data", (data: any) => {
-      const result = data.results?.[0];
-      const alt = result?.alternatives?.[0];
-      if (!alt) return;
-      const text = alt.transcript as string;
-      if (result.isFinal) {
-        console.log("[STT final]:", text);
-        callbacks.onFinal?.(text);
-      } else {
-        callbacks.onPartial?.(text);
+    console.log("[STT] Starting new Google Speech stream...");
+
+    // clear any existing reset timer
+    if (restartTimeout) clearTimeout(restartTimeout);
+
+    // create new stream
+    recognizeStream = client
+      .streamingRecognize(requestConfig)
+      .on("error", (err: any) => {
+        // If it's the 305s limit error (code 11), ignore and restart
+        // Otherwise, report it.
+        if (err.code === 11) {
+          console.log("[STT] Stream time limit reached (expected). Rotating...");
+        } else {
+          console.error("[STT] Error:", err);
+          callbacks.onError?.(err);
+        }
+      })
+      .on("data", (data: any) => {
+        const result = data.results?.[0];
+        const alt = result?.alternatives?.[0];
+        if (!alt) return;
+
+        const text = alt.transcript as string;
+        if (result.isFinal) {
+          console.log("[STT final]:", text);
+          callbacks.onFinal?.(text);
+        } else {
+          callbacks.onPartial?.(text);
+        }
+      });
+
+    // schedule a restart in 240 seconds (4 minutes) to be safe, avoids hard limit accidentally
+    restartTimeout = setTimeout(() => {
+      console.log("[STT] 4 minutes elapsed. Rotating stream to prevent timeout...");
+      const oldStream = recognizeStream;
+
+      // start new stream first
+      startStream();
+
+      // end old stream
+      if (oldStream) {
+        oldStream.end();
+        // remove listeners to prevent late errors
+        oldStream.removeAllListeners();
       }
-    });
+    }, 240 * 1000);
+  };
 
+  startStream();
+
+  // audio loop
   (async () => {
     try {
       for await (const frame of audioStream as AsyncIterable<AudioFrame>) {
         if (!sttAlive) break;
+
         const buffer = Buffer.from(frame.data.buffer);
-        try {
-          recognizeStream.write(buffer);
-        } catch (err) {
-          break;
+
+        // Write to current active stream
+        if (recognizeStream && !recognizeStream.destroyed) {
+          try {
+            recognizeStream.write(buffer);
+          } catch (writeErr) {
+            console.warn("[STT] Write failed, restarting stream immediately.");
+            startStream();
+          }
         }
       }
     } finally {
-      if (sttAlive) recognizeStream.end();
+      sttAlive = false;
+      if (restartTimeout) clearTimeout(restartTimeout);
+      if (recognizeStream) recognizeStream.end();
     }
   })();
 
-  return recognizeStream;
+  // kill loop if needed
+  return {
+    end: () => {
+      sttAlive = false;
+      if (restartTimeout) clearTimeout(restartTimeout);
+      if (recognizeStream) recognizeStream.end();
+    }
+  };
 }
 
 // --- Server ---
