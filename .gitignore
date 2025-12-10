@@ -10,3 +10,4 @@ LLM/src/__pycache__
 LLM/leetcode_solutions.parquet
 
 .env.livekit
+docker-compose.yml

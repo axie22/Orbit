@@ -20,6 +20,10 @@ import { v1 } from "@google-cloud/speech";
 import { v1 as ttsV1 } from "@google-cloud/text-to-speech";
 import express from "express";
 
+// two added imports for LLM integration
+import { getProblemContext } from "./db"; // <--- NEW
+import { generateAiResponse } from "./llm"; // <--- NEW
+
 const app = express();
 app.use(express.json());
 
@@ -137,13 +141,24 @@ class RoomSession {
   audioSource: AudioSource | null = null;
   audioTrack: LocalAudioTrack | null = null;
 
-  constructor(roomName: string) {
+  //LLM additional states:
+  problemId: string = "1"; // Default
+  problemContext: any = null;
+  chatHistory: { role: "user" | "model"; text: string }[] = [];
+  isProcessing: boolean = false; // lock to prevent double-talk so LLM doesnt glitch out when processing mult
+
+  constructor(roomName: string, problemId?: string) {
     this.roomName = roomName;
+    if (problemId) this.problemId = problemId; //added constructor for problemId
     this.identity = `${AGENT_IDENTITY_PREFIX}-${Math.random().toString(36).substring(7)}`;
     this.room = new Room();
   }
 
   async start() {
+    // load RAG context
+    this.problemContext = await getProblemContext(this.problemId);
+
+
     const token = await this.createAgentToken(this.roomName, this.identity);
 
     await this.room.connect(LIVEKIT_URL, token, {
@@ -212,19 +227,37 @@ class RoomSession {
       onFinal: async (text) => {
         console.log(`[STT final][${participant.identity}]:`, text);
 
+        // prevent overlapping processing
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+
         try {
-          // TEMPORARY: Hardcoded response for testing TTS
+          // updated audiohandle for actual finetuned LLM
           // const response = await fetch("http://web-app:3000/api/llm-chat", { ... });
 
-          console.log(`[LLM Proxy] Skipped fetch for testing.`);
-          const aiReply = "This is a hardcoded response. I am effectively speaking back to you to test the audio synthesis system.";
+          //first add/update chat history
+          this.chatHistory.push({ role: "user", text: text });
+
+          // 2. ask LLM for response
+          console.log("[LLM] Generating response...");
+          const aiReply = await generateAiResponse(
+            [...this.chatHistory], // pass a copy of chathistory for context
+            this.latestCode,
+            this.problemContext
+          );
+
           console.log(`[LLM Response]:`, aiReply);
 
-          // Synthesize and play audio
+          // 3. save AI response to history
+          this.chatHistory.push({ role: "model", text: aiReply });
+
+          // synthesize and play audio (tts service, added processing)
           const audioBuffer = await synthesizeSpeech(aiReply);
           await playAudioInRoom(audioBuffer, this);
         } catch (err) {
-          console.error(`[LLM/TTS Error]:`, err);
+          console.error("Pipeline Error:", err);
+        } finally {
+          this.isProcessing = false;
         }
       },
       onError: (err) => {
@@ -317,7 +350,7 @@ function startGoogleStreamingStt(
 const sessions = new Map<string, RoomSession>();
 
 app.post("/join", async (req, res) => {
-  const { roomName } = req.body;
+  const { roomName, problemId } = req.body; // <--- added problemId fetch
   if (!roomName) {
     res.status(400).json({ error: "Missing roomName" });
     return;
@@ -330,7 +363,7 @@ app.post("/join", async (req, res) => {
   }
 
   try {
-    const session = new RoomSession(roomName);
+    const session = new RoomSession(roomName, problemId); // <--- pass problemId
     await session.start();
     sessions.set(roomName, session);
 

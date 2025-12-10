@@ -5,6 +5,8 @@ export async function GET(req: NextRequest) {
   const room = req.nextUrl.searchParams.get("room");
   const username = req.nextUrl.searchParams.get("username");
 
+  const problemId = req.nextUrl.searchParams.get("problemId") || "1";
+
   if (!room) {
     return NextResponse.json(
       { error: 'Missing "room" query parameter' },
@@ -39,7 +41,7 @@ export async function GET(req: NextRequest) {
     await fetch("http://worker:8080/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName: room }),
+      body: JSON.stringify({ roomName: room, problemId: problemId }), // <--- pass problemId to worker
     });
   } catch (err) {
     console.error("Failed to notify worker:", err);
