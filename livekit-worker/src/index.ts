@@ -17,18 +17,19 @@ import {
   TrackPublishOptions,
 } from "@livekit/rtc-node";
 import { v1 } from "@google-cloud/speech";
-import { v1 as ttsV1 } from "@google-cloud/text-to-speech";
+
 import express from "express";
 
 // two added imports for LLM integration
 import { getProblemContext } from "./db";
 import { generateAiResponse } from "./llm";
+import { synthesizeSpeech } from "./tts";
 
 const app = express();
 app.use(express.json());
 
 const client = new v1.SpeechClient();
-const ttsClient = new ttsV1.TextToSpeechClient();
+
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
@@ -42,33 +43,6 @@ if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
   process.exit(1);
 }
 
-// --- TTS Functions ---
-async function synthesizeSpeech(text: string): Promise<Buffer> {
-  try {
-    const [response] = await ttsClient.synthesizeSpeech({
-      input: { text },
-      voice: {
-        languageCode: "en-US",
-        name: "en-US-Neural2-J", // Male voice
-        ssmlGender: "MALE" as const,
-      },
-      audioConfig: {
-        audioEncoding: "LINEAR16" as const,
-        sampleRateHertz: 16000,
-      },
-    });
-
-    if (!response.audioContent) {
-      throw new Error("No audio content in TTS response");
-    }
-
-    console.log(`[TTS] Synthesized ${text.length} characters`);
-    return Buffer.from(response.audioContent as Uint8Array);
-  } catch (err) {
-    console.error("[TTS] Synthesis error:", err);
-    throw err;
-  }
-}
 
 async function playAudioInRoom(
   audioBuffer: Buffer,
