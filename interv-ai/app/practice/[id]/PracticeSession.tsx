@@ -33,8 +33,8 @@ export default function PracticeSession({
   useEffect(() => {
     (async () => {
       try {
-        const resp = await fetch(
-          `/api/token?room=${roomName}&username=${username}`
+        const resp = await fetch( // updated to pass problemId for LLM RAG
+          `/api/token?room=${roomName}&username=${username}&problemId=${problemId}`
         );
         const data = await resp.json();
         setToken(data.token);
