@@ -56,7 +56,8 @@ if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
 
 async function playAudioInRoom(
   audioStream: AsyncIterable<Buffer>,
-  session: RoomSession
+  session: RoomSession,
+  interactionId: number
 ): Promise<void> {
   try {
     if (!session.audioSource) {
@@ -78,6 +79,12 @@ async function playAudioInRoom(
     let leftover: Buffer | null = null;
 
     for await (const chunk of audioStream) {
+      // Interruption Check
+      if (session.currentInteractionId !== interactionId) {
+        console.log(`[TTS] Interrupted! Aborting playback for ID ${interactionId}`);
+        break;
+      }
+
       // Concatenate leftover bytes from previous chunk
       let combinedChunk: Buffer = leftover ? Buffer.concat([leftover, chunk]) : chunk;
 
@@ -103,6 +110,9 @@ async function playAudioInRoom(
       const numFrames = Math.ceil(int16Array.length / FRAME_SIZE);
 
       for (let i = 0; i < numFrames; i++) {
+        // Interruption Check (Inner Loop)
+        if (session.currentInteractionId !== interactionId) break;
+
         const start = i * FRAME_SIZE;
         const end = Math.min(start + FRAME_SIZE, int16Array.length);
         const frameData = int16Array.slice(start, end);
@@ -143,7 +153,7 @@ class RoomSession {
   problemId: string = "1"; // Default
   problemContext: any = null;
   chatHistory: { role: "user" | "model"; text: string }[] = [];
-  isProcessing: boolean = false; // lock to prevent double-talk so LLM doesnt glitch out when processing mult
+  currentInteractionId: number = 0;
 
   constructor(roomName: string, problemId?: string) {
     this.roomName = roomName;
@@ -225,12 +235,11 @@ class RoomSession {
       onFinal: async (text) => {
         console.log(`[STT final][${participant.identity}]:`, text);
 
-        if (this.isProcessing) return;
-        this.isProcessing = true;
+        const myInteractionId = ++this.currentInteractionId;
 
         try {
           this.chatHistory.push({ role: "user", text: text });
-          console.log("[LLM] Generating stream...");
+          console.log(`[LLM] Generating stream... (ID: ${myInteractionId})`);
 
           // 1. Start Stream
           const stream = generateAiResponseStream(
@@ -244,18 +253,30 @@ class RoomSession {
           let audioQueue: Promise<void> = Promise.resolve();
 
           const processSentence = (sentence: string) => {
+            // Barge-in Check
+            if (this.currentInteractionId !== myInteractionId) return;
+
             const s = sentence.trim();
             if (!s) return;
 
             console.log(`[Sent to TTS]: "${s}"`);
 
+            // Chain playback
             audioQueue = audioQueue.then(async () => {
+              // Barge-in Check before synthesizing
+              if (this.currentInteractionId !== myInteractionId) return;
+
               const stream = synthesizeSpeechStream(s);
-              await playAudioInRoom(stream, this);
+              await playAudioInRoom(stream, this, myInteractionId);
             }).catch(err => console.error("Audio chain error:", err));
           };
 
           for await (const chunk of stream) {
+            if (this.currentInteractionId !== myInteractionId) {
+              console.log("[LLM] Stream Interrupted.");
+              break;
+            }
+
             fullReply += chunk;
             sentenceBuffer += chunk;
 
@@ -272,17 +293,18 @@ class RoomSession {
           }
 
           // Process remaining buffer
-          if (sentenceBuffer.trim()) {
+          if (sentenceBuffer.trim() && this.currentInteractionId === myInteractionId) {
             processSentence(sentenceBuffer);
           }
 
-          console.log(`[LLM Full Reply]:`, fullReply);
-          this.chatHistory.push({ role: "model", text: fullReply });
+          if (this.currentInteractionId === myInteractionId) {
+            console.log(`[LLM Full Reply]:`, fullReply);
+            this.chatHistory.push({ role: "model", text: fullReply });
+            await audioQueue;
+          }
 
         } catch (err) {
           console.error("Pipeline Error:", err);
-        } finally {
-          this.isProcessing = false;
         }
       },
       onError: (err) => {
@@ -442,7 +464,7 @@ app.post("/join", async (req, res) => {
   }
 
   try {
-    const session = new RoomSession(roomName, problemId); // <--- pass problemId
+    const session = new RoomSession(roomName, problemId);
     await session.start();
     sessions.set(roomName, session);
 
