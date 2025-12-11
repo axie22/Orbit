@@ -28,6 +28,7 @@ export type Problem = {
   difficulty: Difficulty;
   category: Category;
   description: string;
+  companies?: string[];
 };
 
 export type ApiProblem = {
@@ -36,6 +37,7 @@ export type ApiProblem = {
   difficulty: Difficulty;
   category: string;
   description: string;
+  companies?: string[];
 };
 
 export type ProblemsApiResponse = {

@@ -55,7 +55,7 @@ export default function QuickActionsRow() {
           </p>
           <Button
             as={Link}
-            href="/problems"
+            href="/select"
             size="sm"
             radius="sm"
             variant="bordered"
