@@ -77,7 +77,7 @@ A GPT-4-based AI interviewer that conducts candidate interviews and provides fee
 Our system consists of the following core components:
 
 1. **Fine-Tuned LLM Interviewer**  
-   Custom **Gemini 2.0 Flash** model fine-tuned on synthetic interview dialogues. Uses Socratic questioning to guide candidates without giving direct answers.
+   Custom **Gemini 2.5 Flash** model fine-tuned on synthetic interview dialogues. Uses Socratic questioning to guide candidates without giving direct answers.
 
 2. **Retrieval-Augmented Generation (RAG)**  
    - **DynamoDB**: Stores 1800+ LeetCode problems with solutions and video tutorial transcripts  
@@ -107,7 +107,7 @@ Our system consists of the following core components:
 
 | Category | Tools / Libraries |
 |-----------|------------------|
-| **LLM & AI** | Google Gemini 2.0 Flash (fine-tuned), Vertex AI |
+| **LLM & AI** | Google Gemini 2.5 Flash (fine-tuned), Vertex AI |
 | **Backend** | FastAPI, Node.js, Express |
 | **Frontend** | Next.js 14, React, Tailwind CSS, Monaco Editor |
 | **Database** | DynamoDB (AWS) |
@@ -156,7 +156,7 @@ See [Video_Processing.md](./Documents/Video_Processing.md) for more info.
 1. **Transcript Extraction**: YouTube auto-generated captions via YouTube Transcripts API  
 2. **Problem Mapping**: Match videos to LeetCode problem IDs via title parsing  
 3. **Data Aggregation**: Merge transcripts with LeetCode problem metadata and solution code  
-4. **Synthetic Dialogue Generation**: Use Gemini 2.0 Flash to convert monologue transcripts into realistic interviewer-candidate conversations
+4. **Synthetic Dialogue Generation**: Use Gemini 2.5 Flash to convert monologue transcripts into realistic interviewer-candidate conversations
 
 **Dataset Stats:**
 - **480+ videos** from channels like NeetCode, TechLead  
