@@ -19,12 +19,15 @@ const model = vertexAI.getGenerativeModel({
     model: ENDPOINT_ID,
 });
 
-export async function generateAiResponse(
+export async function* generateAiResponseStream(
     history: { role: string; text: string }[],
     latestUserCode: string,
     context: any
-) {
-    if (!context) return "I'm ready to start, but I couldn't load the problem details.";
+): AsyncGenerator<string> {
+    if (!context) {
+        yield "I'm ready to start, but I couldn't load the problem details.";
+        return;
+    }
 
     const systemPrompt = `
     You are an expert Senior Staff Software Engineer conducting a mock technical interview.
@@ -58,21 +61,8 @@ export async function generateAiResponse(
             parts: [{ text: msg.text }]
         }));
 
-        // Start Chat
-        // Note: Fine-tuned endpoints behave slightly differently. 
-        // We send the system prompt in the config.
-        const chat = model.startChat({
-            systemInstruction: {
-                role: 'system',
-                parts: [{ text: systemPrompt }]
-            },
-            history: vertexHistory,
-        });
-
         // Handle "Empty History" Edge Case
-        // If we have history, we technically want to respond to the *last* user message.
         let userMessage = "Hello, I am ready.";
-
         if (vertexHistory.length > 0 && vertexHistory[vertexHistory.length - 1].role === 'user') {
             const lastMsg = vertexHistory.pop();
             if (lastMsg && lastMsg.parts[0].text) {
@@ -80,7 +70,7 @@ export async function generateAiResponse(
             }
         }
 
-        // Re-initialize chat with adjusted history (minus the trigger message)
+        // Start Chat
         const chatSession = model.startChat({
             systemInstruction: {
                 role: 'system',
@@ -89,21 +79,17 @@ export async function generateAiResponse(
             history: vertexHistory
         });
 
-        const result = await chatSession.sendMessage(userMessage);
-        const response = await result.response;
+        const streamingResult = await chatSession.sendMessageStream(userMessage);
 
-        // Safety check for empty candidates
-        const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!text) {
-            console.warn("[LLM] Response was blocked or empty.");
-            return "I'm thinking, but I'm having trouble phrasing it right now.";
+        for await (const item of streamingResult.stream) {
+            const text = item.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+                yield text;
+            }
         }
-
-        return text;
 
     } catch (err) {
         console.error("[LLM] Generation error:", err);
-        return "I'm having trouble connecting to my brain right now.";
+        yield "I'm having trouble connecting to my brain right now.";
     }
 }
