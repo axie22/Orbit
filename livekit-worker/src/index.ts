@@ -374,10 +374,10 @@ function startGoogleStreamingStt(
     recognizeStream = client
       .streamingRecognize(requestConfig)
       .on("error", (err: any) => {
-        // If it's the 305s limit error (code 11), ignore and restart
-        // Otherwise, report it.
-        if (err.code === 11) {
-          console.log("[STT] Stream time limit reached (expected). Rotating...");
+        if (err.code === 11 || err.code === 13) {
+          console.log(`[STT] Stream error code ${err.code}. Restarting immediately...`);
+          recognizeStream = null;
+          startStream();
         } else {
           console.error("[STT] Error:", err);
           callbacks.onError?.(err);
