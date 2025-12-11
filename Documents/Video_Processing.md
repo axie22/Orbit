@@ -111,7 +111,7 @@ Real interview transcripts are hard to collect (privacy concerns, scarcity). You
 
 **Process:**
 1. Take transcript + problem title
-2. Prompt Gemini 2.0 Flash to generate interviewer-candidate dialogue
+2. Prompt Gemini 2.5 Flash to generate interviewer-candidate dialogue
 3. Interviewer uses Socratic method (asks questions, gives hints)
 4. Candidate responds with reasoning (may make minor mistakes)
 5. Conversation ends with optimal solution
@@ -156,7 +156,7 @@ OUTPUT FORMAT: JSON with messages array
 
 ## 5. Fine-Tuning
 
-**Model:** Gemini 2.0 Flash  
+**Model:** Gemini 2.5 Flash  
 **Platform:** Google AI Studio / Vertex AI  
 
 **Training:**
