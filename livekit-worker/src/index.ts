@@ -33,7 +33,7 @@ if (process.env.GOOGLE_CREDENTIALS_JSON) {
 // two added imports for LLM integration
 import { getProblemContext } from "./db";
 import { generateAiResponseStream } from "./llm";
-import { synthesizeSpeech } from "./tts";
+import { synthesizeSpeechStream } from "./tts";
 
 const app = express();
 app.use(express.json());
@@ -55,8 +55,9 @@ if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
 
 
 async function playAudioInRoom(
-  audioBuffer: Buffer,
-  session: RoomSession
+  audioStream: AsyncIterable<Buffer>,
+  session: RoomSession,
+  interactionId: number
 ): Promise<void> {
   try {
     if (!session.audioSource) {
@@ -75,41 +76,64 @@ async function playAudioInRoom(
       console.log(`[${session.roomName}] Published AI audio track`);
     }
 
-    // Convert Buffer to Int16Array
-    const int16Array = new Int16Array(
-      audioBuffer.buffer,
-      audioBuffer.byteOffset,
-      audioBuffer.length / 2
-    );
+    let leftover: Buffer | null = null;
 
-    // Feed audio in chunks to avoid buffer overflow
-    const FRAME_SIZE = 480; // 30ms at 16kHz
-    const numFrames = Math.ceil(int16Array.length / FRAME_SIZE);
+    for await (const chunk of audioStream) {
+      // Interruption Check
+      if (session.currentInteractionId !== interactionId) {
+        console.log(`[TTS] Interrupted! Aborting playback for ID ${interactionId}`);
+        break;
+      }
 
-    console.log(
-      `[TTS] Playing ${int16Array.length} samples (${numFrames} frames)`
-    );
+      // Concatenate leftover bytes from previous chunk
+      let combinedChunk: Buffer = leftover ? Buffer.concat([leftover, chunk]) : chunk;
 
-    for (let i = 0; i < numFrames; i++) {
-      const start = i * FRAME_SIZE;
-      const end = Math.min(start + FRAME_SIZE, int16Array.length);
-      const frameData = int16Array.slice(start, end);
+      // Ensure we have an even number of bytes for Int16Array
+      const remainder = combinedChunk.length % 2;
+      if (remainder !== 0) {
+        leftover = combinedChunk.slice(combinedChunk.length - remainder);
+        combinedChunk = combinedChunk.slice(0, combinedChunk.length - remainder);
+      } else {
+        leftover = null;
+      }
 
-      // Create AudioFrame
-      const audioFrame = new AudioFrame(
-        frameData,
-        16000,
-        1,
-        frameData.length
+      if (combinedChunk.length === 0) continue;
+
+      const int16Array = new Int16Array(
+        combinedChunk.buffer,
+        combinedChunk.byteOffset,
+        combinedChunk.length / 2
       );
 
-      await session.audioSource.captureFrame(audioFrame);
+      // Feed audio in chunks
+      const FRAME_SIZE = 480; // 30ms at 16kHz
+      const numFrames = Math.ceil(int16Array.length / FRAME_SIZE);
 
-      // Small delay to match real-time playback (30ms per frame)
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      for (let i = 0; i < numFrames; i++) {
+        // Interruption Check (Inner Loop)
+        if (session.currentInteractionId !== interactionId) break;
+
+        const start = i * FRAME_SIZE;
+        const end = Math.min(start + FRAME_SIZE, int16Array.length);
+        const frameData = int16Array.slice(start, end);
+
+        const audioFrame = new AudioFrame(
+          frameData,
+          16000,
+          1,
+          frameData.length
+        );
+
+        await session.audioSource.captureFrame(audioFrame);
+        // 30ms delay per frame
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      }
     }
 
-    console.log(`[TTS] Finished playing audio`);
+    // Process any tiny leftover (unlikely to be audible but good hygiene)
+    // Actually, distinct single byte cannot be played in 16-bit. buffer it for next call? 
+    // In this context, it's end of stream, so we discard partial sample.
+
   } catch (err) {
     console.error("[TTS] Playback error:", err);
     throw err;
@@ -129,7 +153,7 @@ class RoomSession {
   problemId: string = "1"; // Default
   problemContext: any = null;
   chatHistory: { role: "user" | "model"; text: string }[] = [];
-  isProcessing: boolean = false; // lock to prevent double-talk so LLM doesnt glitch out when processing mult
+  currentInteractionId: number = 0;
 
   constructor(roomName: string, problemId?: string) {
     this.roomName = roomName;
@@ -208,15 +232,20 @@ class RoomSession {
   handleAudioTrack(track: RemoteTrack, participant: RemoteParticipant) {
     const audioStream = new AudioStream(track, 16000, 1);
     const sttStream = startGoogleStreamingStt(audioStream, {
+      onPartial: (text) => {
+        // Immediate Barge-in on any sound/partial
+        if (text.trim().length > 0) {
+          this.currentInteractionId++;
+        }
+      },
       onFinal: async (text) => {
         console.log(`[STT final][${participant.identity}]:`, text);
 
-        if (this.isProcessing) return;
-        this.isProcessing = true;
+        const myInteractionId = ++this.currentInteractionId;
 
         try {
           this.chatHistory.push({ role: "user", text: text });
-          console.log("[LLM] Generating stream...");
+          console.log(`[LLM] Generating stream... (ID: ${myInteractionId})`);
 
           // 1. Start Stream
           const stream = generateAiResponseStream(
@@ -230,18 +259,30 @@ class RoomSession {
           let audioQueue: Promise<void> = Promise.resolve();
 
           const processSentence = (sentence: string) => {
+            // Barge-in Check
+            if (this.currentInteractionId !== myInteractionId) return;
+
             const s = sentence.trim();
             if (!s) return;
 
             console.log(`[Sent to TTS]: "${s}"`);
 
+            // Chain playback
             audioQueue = audioQueue.then(async () => {
-              const buffer = await synthesizeSpeech(s);
-              await playAudioInRoom(buffer, this);
+              // Barge-in Check before synthesizing
+              if (this.currentInteractionId !== myInteractionId) return;
+
+              const stream = synthesizeSpeechStream(s);
+              await playAudioInRoom(stream, this, myInteractionId);
             }).catch(err => console.error("Audio chain error:", err));
           };
 
           for await (const chunk of stream) {
+            if (this.currentInteractionId !== myInteractionId) {
+              console.log("[LLM] Stream Interrupted.");
+              break;
+            }
+
             fullReply += chunk;
             sentenceBuffer += chunk;
 
@@ -258,17 +299,18 @@ class RoomSession {
           }
 
           // Process remaining buffer
-          if (sentenceBuffer.trim()) {
+          if (sentenceBuffer.trim() && this.currentInteractionId === myInteractionId) {
             processSentence(sentenceBuffer);
           }
 
-          console.log(`[LLM Full Reply]:`, fullReply);
-          this.chatHistory.push({ role: "model", text: fullReply });
+          if (this.currentInteractionId === myInteractionId) {
+            console.log(`[LLM Full Reply]:`, fullReply);
+            this.chatHistory.push({ role: "model", text: fullReply });
+            await audioQueue;
+          }
 
         } catch (err) {
           console.error("Pipeline Error:", err);
-        } finally {
-          this.isProcessing = false;
         }
       },
       onError: (err) => {
@@ -428,7 +470,7 @@ app.post("/join", async (req, res) => {
   }
 
   try {
-    const session = new RoomSession(roomName, problemId); // <--- pass problemId
+    const session = new RoomSession(roomName, problemId);
     await session.start();
     sessions.set(roomName, session);
 
