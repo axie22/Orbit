@@ -2,18 +2,27 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-    const hasCookie = req.cookies.has("site-access");    // 2. Define paths that need protection
-    // The user wants to allow the landing page ("/") but block "functionality" (practice, etc)
+    const hasCookie = req.cookies.has("site-access");
     const isProtectedPath =
         req.nextUrl.pathname.startsWith("/practice") ||
         req.nextUrl.pathname.startsWith("/select");
 
-    // 3. Logic: If it's a protected path and no cookie, redirect
-    if (isProtectedPath && !hasCookie) {
-        return NextResponse.redirect(new URL("/password", req.url));
+    //  If it's a protected path
+    if (isProtectedPath) {
+        // Check Site Password
+        if (!hasCookie) {
+            return NextResponse.redirect(new URL("/password", req.url));
+        }
+
+        // Check User Authentication
+        const sessionToken = req.cookies.get("next-auth.session-token")?.value ||
+            req.cookies.get("__Secure-next-auth.session-token")?.value;
+
+        if (!sessionToken) {
+            return NextResponse.redirect(new URL("/api/auth/signin", req.url));
+        }
     }
 
-    // 4. If they are on the password page but have the cookie, send them to /select or /
     if (req.nextUrl.pathname === "/password" && hasCookie) {
         return NextResponse.redirect(new URL("/select", req.url));
     }
