@@ -11,7 +11,7 @@ const client = new ElevenLabsClient({
     apiKey: ELEVENLABS_API_KEY,
 });
 
-export async function synthesizeSpeech(text: string): Promise<Buffer> {
+export async function* synthesizeSpeechStream(text: string): AsyncGenerator<Buffer> {
     try {
         const responseStream = await client.textToSpeech.convert("cjVigY5qzO86Huf0OWal", {
             text,
@@ -19,16 +19,11 @@ export async function synthesizeSpeech(text: string): Promise<Buffer> {
             output_format: "pcm_16000",
         });
 
-        const chunks: Buffer[] = [];
         for await (const chunk of responseStream) {
-            chunks.push(Buffer.from(chunk));
+            yield Buffer.from(chunk);
         }
-        const audioBuffer = Buffer.concat(chunks);
-
-        console.log(`[TTS] Synthesized ${text.length} characters using ElevenLabs`);
-        return audioBuffer;
     } catch (err) {
-        console.error("[TTS] Synthesis error:", err);
+        console.error("[TTS] Synthesis stream error:", err);
         throw err;
     }
 }
