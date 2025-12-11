@@ -32,7 +32,7 @@ if (process.env.GOOGLE_CREDENTIALS_JSON) {
 
 // two added imports for LLM integration
 import { getProblemContext } from "./db";
-import { generateAiResponse } from "./llm";
+import { generateAiResponseStream } from "./llm";
 import { synthesizeSpeech } from "./tts";
 
 const app = express();
@@ -211,33 +211,60 @@ class RoomSession {
       onFinal: async (text) => {
         console.log(`[STT final][${participant.identity}]:`, text);
 
-        // prevent overlapping processing
         if (this.isProcessing) return;
         this.isProcessing = true;
 
         try {
-          // updated audiohandle for actual finetuned LLM
-          // const response = await fetch("http://web-app:3000/api/llm-chat", { ... });
-
-          //first add/update chat history
           this.chatHistory.push({ role: "user", text: text });
+          console.log("[LLM] Generating stream...");
 
-          // 2. ask LLM for response
-          console.log("[LLM] Generating response...");
-          const aiReply = await generateAiResponse(
-            [...this.chatHistory], // pass a copy of chathistory for context
+          // 1. Start Stream
+          const stream = generateAiResponseStream(
+            [...this.chatHistory],
             this.latestCode,
             this.problemContext
           );
 
-          console.log(`[LLM Response]:`, aiReply);
+          let fullReply = "";
+          let sentenceBuffer = "";
+          let audioQueue: Promise<void> = Promise.resolve();
 
-          // 3. save AI response to history
-          this.chatHistory.push({ role: "model", text: aiReply });
+          const processSentence = (sentence: string) => {
+            const s = sentence.trim();
+            if (!s) return;
 
-          // synthesize and play audio (tts service, added processing)
-          const audioBuffer = await synthesizeSpeech(aiReply);
-          await playAudioInRoom(audioBuffer, this);
+            console.log(`[Sent to TTS]: "${s}"`);
+
+            audioQueue = audioQueue.then(async () => {
+              const buffer = await synthesizeSpeech(s);
+              await playAudioInRoom(buffer, this);
+            }).catch(err => console.error("Audio chain error:", err));
+          };
+
+          for await (const chunk of stream) {
+            fullReply += chunk;
+            sentenceBuffer += chunk;
+
+            // End of sentence detection
+            let boundaryIndex = sentenceBuffer.search(/[.!?\n]/);
+
+            while (boundaryIndex !== -1) {
+              const sentence = sentenceBuffer.slice(0, boundaryIndex + 1);
+              sentenceBuffer = sentenceBuffer.slice(boundaryIndex + 1);
+
+              processSentence(sentence);
+              boundaryIndex = sentenceBuffer.search(/[.!?\n]/);
+            }
+          }
+
+          // Process remaining buffer
+          if (sentenceBuffer.trim()) {
+            processSentence(sentenceBuffer);
+          }
+
+          console.log(`[LLM Full Reply]:`, fullReply);
+          this.chatHistory.push({ role: "model", text: fullReply });
+
         } catch (err) {
           console.error("Pipeline Error:", err);
         } finally {
