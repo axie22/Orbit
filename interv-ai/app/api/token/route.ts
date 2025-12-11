@@ -37,12 +37,14 @@ export async function GET(req: NextRequest) {
   const token = await at.toJwt();
 
   // Notify the worker to join this room
+  console.log(`[Token API] Notifying worker at ${process.env.WORKER_URL || "http://worker:8080/join"} for room ${room}`);
   try {
-    await fetch(process.env.WORKER_URL || "http://worker:8080/join", {
+    const workerRes = await fetch(process.env.WORKER_URL || "http://worker:8080/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName: room, problemId: problemId }), // <--- pass problemId to worker
+      body: JSON.stringify({ roomName: room, problemId: problemId }),
     });
+    console.log(`[Token API] Worker response status: ${workerRes.status}`);
   } catch (err) {
     console.error("Failed to notify worker:", err);
     // Don't fail the user request just because worker didn't start?

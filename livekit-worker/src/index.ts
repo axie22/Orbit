@@ -387,7 +387,8 @@ function startGoogleStreamingStt(
 const sessions = new Map<string, RoomSession>();
 
 app.post("/join", async (req, res) => {
-  const { roomName, problemId } = req.body; // <--- added problemId fetch
+  const { roomName, problemId } = req.body;
+  console.log(`[Worker] Received join request for room: ${roomName}, problemId: ${problemId}`);
   if (!roomName) {
     res.status(400).json({ error: "Missing roomName" });
     return;
