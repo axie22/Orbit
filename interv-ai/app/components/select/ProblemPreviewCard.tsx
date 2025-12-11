@@ -48,6 +48,19 @@ export default function ProblemPreviewCard({
               {selectedProblem.description}
             </p>
 
+            {selectedProblem.companies && selectedProblem.companies.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="text-xs text-slate-500 font-medium self-center mr-1">
+                  Seen at:
+                </span>
+                {selectedProblem.companies.slice(0, 5).map((company) => (
+                  <Chip key={company} size="sm" variant="flat" className="text-[10px] h-5 bg-slate-100 text-slate-600">
+                    {company}
+                  </Chip>
+                ))}
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-slate-500 font-mono">
                 Mode: <span className="font-semibold">Live AI Interview</span>

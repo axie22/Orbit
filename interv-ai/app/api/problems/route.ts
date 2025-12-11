@@ -21,6 +21,7 @@ export type ProblemDTO = {
   difficulty: Difficulty;
   category: string;
   description: string;
+  companies?: string[];
 };
 
 type ProblemsResponse = {
@@ -58,6 +59,7 @@ export async function GET(req: NextRequest) {
   const difficulty = searchParams.get("difficulty") as Difficulty | null;
   const limitParam = searchParams.get("limit");
   const cursor = searchParams.get("cursor");
+  const search = searchParams.get("search");
 
   if (!category) {
     return NextResponse.json(
@@ -89,8 +91,19 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    input.KeyConditionExpression += " AND begins_with(sort_key, :sortPrefix)";
+    // Fix: Use ExpressionAttributeNames because '#' is special
+    input.KeyConditionExpression += " AND begins_with(#sk, :sortPrefix)";
+    if (!input.ExpressionAttributeNames) input.ExpressionAttributeNames = {};
+    input.ExpressionAttributeNames["#sk"] = "difficulty#problemID";
     input.ExpressionAttributeValues![":sortPrefix"] = prefix;
+  }
+
+  // Handle Search using FilterExpression
+  if (search) {
+    input.FilterExpression = "contains(#title, :search)";
+    if (!input.ExpressionAttributeNames) input.ExpressionAttributeNames = {};
+    input.ExpressionAttributeNames["#title"] = "title";
+    input.ExpressionAttributeValues![":search"] = search;
   }
 
 
@@ -101,6 +114,13 @@ export async function GET(req: NextRequest) {
     const items = (result.Items || []).map((item): ProblemDTO => {
       const rawId = item.problemID ?? item.problemId;
       const difficultyValue = item.difficulty as Difficulty;
+
+      let companies: string[] = [];
+      if (Array.isArray(item.companies)) {
+        companies = item.companies;
+      } else if (typeof item.companies === "string") {
+        companies = item.companies.split(",").map((c: string) => c.trim()).filter(Boolean);
+      }
 
       const fullDescription = item.description ?? "";
       const description =
@@ -114,7 +134,8 @@ export async function GET(req: NextRequest) {
         difficulty: difficultyValue,
         category: item.primary_topic ?? category,
         description,
-      };  
+        companies: companies,
+      };
     });
 
     const nextCursor = encodeCursor(result.LastEvaluatedKey);
