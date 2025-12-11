@@ -3,7 +3,7 @@ services:
     build:
       context: ./interv-ai
       args:
-        - NEXT_PUBLIC_LIVEKIT_URL=wss://orbitllm-620p7fc0.livekit.cloud
+        - NEXT_PUBLIC_LIVEKIT_URL=wss://orbit-xbxv09ai.livekit.cloud
     ports:
       - "3000:3000"
     env_file:
