@@ -17,6 +17,12 @@ export async function* synthesizeSpeechStream(text: string): AsyncGenerator<Buff
             text,
             model_id: "eleven_turbo_v2_5",
             output_format: "pcm_16000",
+            voice_settings: {
+                stability: 0.4,
+                similarity_boost: 0.8,
+                style: 0.2,
+                use_speaker_boost: true,
+            }
         });
 
         for await (const chunk of responseStream) {
