@@ -232,6 +232,12 @@ class RoomSession {
   handleAudioTrack(track: RemoteTrack, participant: RemoteParticipant) {
     const audioStream = new AudioStream(track, 16000, 1);
     const sttStream = startGoogleStreamingStt(audioStream, {
+      onPartial: (text) => {
+        // Immediate Barge-in on any sound/partial
+        if (text.trim().length > 0) {
+          this.currentInteractionId++;
+        }
+      },
       onFinal: async (text) => {
         console.log(`[STT final][${participant.identity}]:`, text);
 

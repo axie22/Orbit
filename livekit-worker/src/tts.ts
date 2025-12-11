@@ -18,10 +18,10 @@ export async function* synthesizeSpeechStream(text: string): AsyncGenerator<Buff
             model_id: "eleven_turbo_v2_5",
             output_format: "pcm_16000",
             voice_settings: {
-                stability: 0.4,
-                similarity_boost: 0.8,
+                stability: 0.5,
+                similarity_boost: 0.6,
                 style: 0.2,
-                use_speaker_boost: true,
+                use_speaker_boost: false,
             }
         });
 
