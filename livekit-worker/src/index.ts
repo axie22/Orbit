@@ -19,6 +19,16 @@ import {
 import { v1 } from "@google-cloud/speech";
 import { v1 as ttsV1 } from "@google-cloud/text-to-speech";
 import express from "express";
+import fs from "fs";
+
+// HANDLE GOOGLE AUTH FOR NON-GCP ENVIRONMENTS (DigitalOcean)
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+  const credentialsPath = "./google-credentials.json";
+  fs.writeFileSync(credentialsPath, process.env.GOOGLE_CREDENTIALS_JSON);
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+  console.log("Detected GOOGLE_CREDENTIALS_JSON, wrote to", credentialsPath);
+}
+
 
 // two added imports for LLM integration
 import { getProblemContext } from "./db";
