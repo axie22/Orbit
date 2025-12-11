@@ -1,6 +1,6 @@
 # LLM Service Documentation
 ## Overview
-The LLM service is the core intelligence of the InterviewPrepAI system. It combines a **fine-tuned Gemini 2.0 Flash model** with **RAG (Retrieval-Augmented Generation)** to provide context-aware interview coaching.
+The LLM service is the core intelligence of the InterviewPrepAI system. It combines a **fine-tuned Gemini 2.5 Flash model** with **RAG (Retrieval-Augmented Generation)** to provide context-aware interview coaching.
 **Key Features:**
 - Fine-tuned on 220+ synthetic interview dialogues
 - Real-time problem context retrieval from DynamoDB
@@ -25,7 +25,7 @@ The LLM service is the core intelligence of the InterviewPrepAI system. It combi
     ▼         ▼
 ┌──────┐  ┌─────────────────┐
 │ DDB  │  │ Vertex AI       │
-│ RAG  │  │ Gemini 2.0      │
+│ RAG  │  │ Gemini 2.5      │
 │      │  │ (Fine-tuned)    │
 └──────┘  └─────────────────┘
 ```
@@ -69,7 +69,7 @@ Main endpoint for interview conversation.
 ---
 ### 2. LLM Client (`src/llm_client.py`)
 **Fine-Tuned Model Details:**
-- **Base Model:** Gemini 2.0 Flash
+- **Base Model:** Gemini 5 Flash
 - **Platform:** Google Vertex AI
 - **Training Data:** 220+ synthetic interview dialogues
 **Generation Function:**
@@ -174,7 +174,7 @@ Generates synthetic training dialogues for fine-tuning.
 
 **Process:**
 1. Sample N problems from transcript CSV
-2. For each problem, prompt Gemini 2.0 Flash to convert monologue transcript into dialogue
+2. For each problem, prompt Gemini 2.5 Flash to convert monologue transcript into dialogue
 3. Format as interviewer-candidate conversation (Socratic style)
 4. Convert to Google AI Studio JSONL format
 5. Save to `interview_finetune_data.jsonl`
@@ -221,7 +221,7 @@ python addsystemprompt.py
 - Navigate to "Tune" section
 - Upload JSONL file
 - Configure tuning job:
-  - Base model: Gemini 2.0 Flash
+  - Base model: Gemini 2.5 Flash
   - Epochs: 3-5
   - Learning rate: Auto
 ### 4. Deploy to Vertex AI
