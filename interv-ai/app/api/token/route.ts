@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   // Notify the worker to join this room
   try {
-    await fetch("http://worker:8080/join", {
+    await fetch(process.env.WORKER_URL || "http://worker:8080/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomName: room, problemId: problemId }), // <--- pass problemId to worker
