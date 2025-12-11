@@ -37,9 +37,13 @@ export async function GET(req: NextRequest) {
   const token = await at.toJwt();
 
   // Notify the worker to join this room
-  console.log(`[Token API] Notifying worker at ${process.env.WORKER_URL || "http://worker:8080/join"} for room ${room}`);
+  // Notify the worker to join this room
+  const workerBase = (process.env.WORKER_URL || "http://worker:8080").replace(/\/$/, "");
+  const workerUrl = workerBase.endsWith("/join") ? workerBase : `${workerBase}/join`;
+
+  console.log(`[Token API] Notifying worker at ${workerUrl} for room ${room}`);
   try {
-    const workerRes = await fetch(process.env.WORKER_URL || "http://worker:8080/join", {
+    const workerRes = await fetch(workerUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomName: room, problemId: problemId }),
