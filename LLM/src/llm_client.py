@@ -9,10 +9,9 @@ load_dotenv()
 # --- CONFIGURATION ---
 PROJECT_ID = "618518132754"
 LOCATION = "us-central1"
-# The Endpoint ID you provided
 ENDPOINT_ID = "projects/618518132754/locations/us-central1/endpoints/5275745961627353088"
 
-# Initialize Client (Uses your service_account.json automatically via ADC)
+# initialize client
 client = genai.Client(
     vertexai=True,
     project=PROJECT_ID,
@@ -31,8 +30,8 @@ def generate_response(chat_history, current_user_code, problem_context):
     title = problem_context.get('title', 'Unknown Problem')
     description = problem_context.get('description', 'No description.')
 
-    # 1. Build the System Prompt (The Persona)
-    # This instructs Gemini on how to behave.
+    # 1. build system prompt
+    # instructs Gemini on how to behave.
     system_text = f"""
     You are an expert Senior Staff Software Engineer conducting a mock technical interview.
     The user is solving the problem: "{problem_context['title']}".
@@ -59,7 +58,7 @@ def generate_response(chat_history, current_user_code, problem_context):
     5. If the user is completely stuck, use one of the "INTERVIEWER HINTS" provided above.
     """
 
-    # 2. FORMAT HISTORY
+    # 2. embed chat history
     # Map our history format to the new google.genai.types.Content format
     contents = []
     for msg in chat_history:
@@ -78,27 +77,9 @@ def generate_response(chat_history, current_user_code, problem_context):
             model=ENDPOINT_ID,
             contents=contents,
             config=types.GenerateContentConfig(
-                temperature=0.7, # Lowered slightly for more stable hints
+                temperature=0.7, # lowered slightly for more stable hints and guidance
                 max_output_tokens=1024,
-                system_instruction=system_text, # Inject System Prompt here
-                safety_settings=[
-                    types.SafetySetting(
-                        category="HARM_CATEGORY_HATE_SPEECH",
-                        threshold="OFF"
-                    ),
-                    types.SafetySetting(
-                        category="HARM_CATEGORY_DANGEROUS_CONTENT",
-                        threshold="OFF"
-                    ),
-                    types.SafetySetting(
-                        category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        threshold="OFF"
-                    ),
-                    types.SafetySetting(
-                        category="HARM_CATEGORY_HARASSMENT",
-                        threshold="OFF"
-                    )
-                ]
+                system_instruction=system_text, #system prompt
             )
         )
         return response.text
