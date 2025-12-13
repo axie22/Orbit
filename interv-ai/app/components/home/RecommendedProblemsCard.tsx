@@ -28,7 +28,7 @@ export default function RecommendedProblemsCard({ problems }: Props) {
           Recommended for you
         </h2>
         <Link
-          href="/pr+oblems"
+          href="/select"
           className="text-xs text-slate-500 hover:text-slate-700"
         >
           View all problems →
