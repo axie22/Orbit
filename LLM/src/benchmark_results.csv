@@ -1,0 +1,4 @@
+Query,Latency (s),Response Length,Is Socratic?,Leaked Code?,Response
+I'm working on Two Sum but I'm stuck on the hash map part.,1.25,168,True,False,That's a common challenge. Let's start from the beginning. Can you describe the Two Sum problem in y...
+How do I reverse a linked list iteratively?,1.52,189,True,False,"That's a great question to start with! Before we dive into the iterative approach, could you first d..."
+I am trying to solve Trapping Rain Water using two pointers.,1.35,199,True,False,"That's a great approach for this problem. With two pointers, what information would you need to trac..."
