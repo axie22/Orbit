@@ -10,10 +10,7 @@ export type RecommendedProblem = {
   category: string;
 };
 
-const difficultyColor: Record<
-  Difficulty,
-  "success" | "warning" | "danger"
-> = {
+const difficultyColor: Record<Difficulty, "success" | "warning" | "danger"> = {
   Easy: "success",
   Medium: "warning",
   Hard: "danger",
@@ -64,7 +61,8 @@ export default function RecommendedProblemsCard({ problems }: Props) {
                   </Chip>
                   <Button
                     as={Link}
-                    href={`/practice?problemId=${p.id}`}
+                    href={`/select`} // TODO: change to start session with p.id
+                    // href={`/practice?problemId=${p.id}`}
                     size="sm"
                     radius="sm"
                     variant="bordered"

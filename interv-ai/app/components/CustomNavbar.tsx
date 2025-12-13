@@ -68,7 +68,7 @@ export default function CustomNavbar() {
       <NavbarContent justify="end" className="gap-3">
         <NavbarItem className="hidden sm:flex">
           <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-slate-500 px-2 py-1 rounded-full border border-slate-200 bg-slate-50">
-            Alpha
+            Beta
           </span>
         </NavbarItem>
 
@@ -87,7 +87,7 @@ export default function CustomNavbar() {
             <NavbarItem className="hidden md:flex">
               <Button
                 as={Link}
-                href="/practice"
+                href="/select"
                 size="sm"
                 variant="bordered"
                 radius="sm"
