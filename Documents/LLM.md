@@ -247,14 +247,9 @@ GOOGLE_APPLICATION_CREDENTIALS=./service_account.json
 1. Create Google Cloud service account with permissions:
    - Vertex AI User
    - Speech-to-Text API User (if using STT)
-   - Text-to-Speech API User (if using TTS)
 2. Download JSON key as `service_account.json`
 3. Place in `LLM/` directory
 ---
-
-
-
-
 
 
 ## API Usage Examples
