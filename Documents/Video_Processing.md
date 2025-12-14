@@ -95,7 +95,7 @@ def process_caption(video_id: str) -> str:
 **Coverage:**
 - **480+ videos** processed
 - **1825 unique LeetCode problems** in database
-- **60-70% transcript coverage** (problems with associated video explanations)
+- **30% transcript coverage** (problems with associated video explanations)
 
 ---
 
@@ -222,11 +222,12 @@ You are an expert Senior Staff Software Engineer conducting a mock technical int
 ### Limitations:
 - **Technical vocabulary errors:** Some terms transcribed incorrectly
 - **Monologue format:** Original transcripts aren't dialogues (synthetic conversion needed)
-- **Coverage gaps:** Not all 1825 problems have video tutorials (only 60-70%)
+- **Coverage gaps:** Not all 1825 problems have video tutorials (only 30%)
 - **Synthetic dialogue quality:** Generated conversations can feel scripted or overly polished
 
 ### Future Improvements:
-- Manual correction of technical terms in high-value transcripts
+- Manual correction of technical terms in high-value transcripts (e.g. deck -> deque)
+- Expand mock and video explanation video data from different platform other than Youtube
 - Collect real human-human mock interview recordings for training data
 - Expand video coverage to system design and behavioral questions
 - Fine-tune dialogue generator to produce more realistic candidate responses
