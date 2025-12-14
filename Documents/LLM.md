@@ -69,7 +69,7 @@ Main endpoint for interview conversation.
 ---
 ### 2. LLM Client (`src/llm_client.py`)
 **Fine-Tuned Model Details:**
-- **Base Model:** Gemini 5 Flash
+- **Base Model:** Gemini 2.5 Flash
 - **Platform:** Google Vertex AI
 - **Training Data:** 220+ synthetic interview dialogues
 **Generation Function:**
@@ -247,14 +247,9 @@ GOOGLE_APPLICATION_CREDENTIALS=./service_account.json
 1. Create Google Cloud service account with permissions:
    - Vertex AI User
    - Speech-to-Text API User (if using STT)
-   - Text-to-Speech API User (if using TTS)
 2. Download JSON key as `service_account.json`
 3. Place in `LLM/` directory
 ---
-
-
-
-
 
 
 ## API Usage Examples

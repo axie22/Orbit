@@ -96,7 +96,7 @@ Our system consists of the following core components:
 3. **Real-Time Voice System**  
    - **LiveKit**: WebRTC infrastructure for low-latency audio streaming  
    - **Google Cloud STT**: Streaming speech-to-text with automatic punctuation  
-   - **Google Cloud TTS**: Neural voice synthesis (en-US-Neural2-J)  
+   - **ElevenLabs TTS**: Neural text-to-speech synthesis using the `eleven_turbo_v2_5` model
    - Round-trip latency: ~3-4 seconds from speech to AI response
 
 4. **Interactive Coding Workspace**  
@@ -123,7 +123,7 @@ Our system consists of the following core components:
 | **Backend** | FastAPI, Node.js, Express |
 | **Frontend** | Next.js 14, React, Tailwind CSS, Monaco Editor |
 | **Database** | DynamoDB (AWS) |
-| **Real-Time Audio** | LiveKit, Google Cloud STT/TTS |
+| **Real-Time Audio** | LiveKit, Google Cloud STT, ElevenLabs TTS |
 | **Data Processing** | Python, Pandas, YouTube Transcripts API |
 | **Deployment** | Docker, Docker Compose |
 | **Version Control** | Git, GitHub |
@@ -173,7 +173,7 @@ See [Video_Processing.md](./Documents/Video_Processing.md) for more info.
 **Dataset Stats:**
 - **480+ videos** from channels like NeetCode, TechLead  
 - **6.7MB CSV** with problem transcripts  
-- **1825 unique problems** mapped (60-70% transcript coverage)  
+- **1825 unique problems** mapped (30% transcript coverage)  
 - **220+ training dialogues** generated for fine-tuning
 
 **Purpose:**  
@@ -263,7 +263,8 @@ TechnicalInterviewLLM/
 - Node.js 18+
 - Docker & Docker Compose
 - AWS account (DynamoDB)
-- Google Cloud account (STT/TTS, Vertex AI)
+- Google Cloud account (STT, Vertex AI)
+- ElevenLabs account (TTS)
 - LiveKit server (or LiveKit Cloud)
 
 ### Running Locally
@@ -280,6 +281,7 @@ TechnicalInterviewLLM/
    LIVEKIT_API_KEY=your_key
    LIVEKIT_API_SECRET=your_secret
    GOOGLE_APPLICATION_CREDENTIALS=./keys/service_account.json
+   ELEVENLABS_API_KEY=your_elevenlabs_api_key
    
    # interv-ai/.env
    NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
