@@ -105,6 +105,9 @@ Our system consists of the following core components:
    - **Worker**: Node.js LiveKit worker orchestrating STT/TTS pipeline  
    - **Deployment**: Docker Compose for multi-service orchestration
 
+## System Diagram:
+![System Diagram](SysDiagram.png)
+
 ---
 
 ## Tools & Technologies
