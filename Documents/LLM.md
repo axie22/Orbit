@@ -69,7 +69,7 @@ Main endpoint for interview conversation.
 ---
 ### 2. LLM Client (`src/llm_client.py`)
 **Fine-Tuned Model Details:**
-- **Base Model:** Gemini 5 Flash
+- **Base Model:** Gemini 2.5 Flash
 - **Platform:** Google Vertex AI
 - **Training Data:** 220+ synthetic interview dialogues
 **Generation Function:**
