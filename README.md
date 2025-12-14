@@ -1,8 +1,13 @@
 # Orbit — Personalized Interview Preparation Assistant
 
-## Deployment Link
+## Deployment Link & Info
 
+This app has been deployed! Please use deployment link to access:
 https://orbit-app-mt7to.ondigitalocean.app/
+
+Due to rate limiting, access is private currently. Only persons with password are allowed at this time.
+
+This application is deployed using Digital Ocean.
 
 ## Overview
 
