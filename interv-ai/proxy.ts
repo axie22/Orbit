@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
     const hasCookie = req.cookies.has("site-access");
     const isProtectedPath =
         req.nextUrl.pathname.startsWith("/practice") ||
@@ -11,7 +11,7 @@ export function middleware(req: NextRequest) {
     if (isProtectedPath) {
         // Check Site Password
         if (!hasCookie) {
-            return NextResponse.redirect(new URL("/password", req.url));
+            return NextResponse.redirect(new URL("/access", req.url));
         }
 
         // Check User Authentication
@@ -23,7 +23,7 @@ export function middleware(req: NextRequest) {
         }
     }
 
-    if (req.nextUrl.pathname === "/password" && hasCookie) {
+    if (req.nextUrl.pathname === "/access" && hasCookie) {
         return NextResponse.redirect(new URL("/select", req.url));
     }
 
