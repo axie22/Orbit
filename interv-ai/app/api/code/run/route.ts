@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
         const payloadString = new TextDecoder("utf-8").decode(response.Payload);
         const payload = JSON.parse(payloadString);
 
-        // The payload itself contains statusCode and body from our lambda_handler
         if (payload.body) {
             const body = JSON.parse(payload.body);
             return NextResponse.json(body);
