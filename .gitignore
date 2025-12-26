@@ -11,3 +11,5 @@ LLM/leetcode_solutions.parquet
 
 .env.livekit
 docker-compose.yml
+
+aws/

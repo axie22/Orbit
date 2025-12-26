@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-lambda": "^3.958.0",
     "@aws-sdk/lib-dynamodb": "^3.940.0",
     "@google/generative-ai": "^0.24.1",
     "@heroui/button": "^2.2.27",
